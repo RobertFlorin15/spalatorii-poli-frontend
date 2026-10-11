@@ -20,30 +20,46 @@ const MachineList = ({ onSelectMachine }) => {
     return () => unsubscribe();
   }, []);
 
-  if (loading) return <div className="text-center text-white mt-10">se incarca</div>;
+  if (loading) return <div className="text-center text-white mt-10 font-bold">se incarca.</div>;
 
   const washers = machines.filter(m => m.type === 'washer');
   const dryers = machines.filter(m => m.type === 'dryer');
 
+  const sliderContainerClass = "flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]";
+  
+  const slideItemClass = "min-w-[100%] sm:min-w-[280px] snap-center shrink-0";
+
   return (
     <div className="w-full flex flex-col gap-8">
-      {/* masinile de spalat */}
+      {/* Secțiunea Mașini */}
       <section>
         <h2 className="text-xl font-bold mb-4 text-white drop-shadow-sm px-2">Mașini de spălat</h2>
-        <div className="flex flex-col gap-4">
-          {washers.map(machine => (
-            <MachineCard key={machine.id} machine={machine} onSelect={() => onSelectMachine(machine)} />
-          ))}
+        <div className={sliderContainerClass}>
+          {washers.length > 0 ? (
+            washers.map(machine => (
+              <div key={machine.id} className={slideItemClass}>
+                <MachineCard machine={machine} onSelect={() => onSelectMachine(machine)} />
+              </div>
+            ))
+          ) : (
+            <p className="text-blue-100 px-2">nu exista</p>
+          )}
         </div>
       </section>
 
-      {/* uscatoarele */}
+      {/* Secțiunea Uscătoare */}
       <section>
         <h2 className="text-xl font-bold mb-4 text-white drop-shadow-sm px-2">Uscătoare</h2>
-        <div className="flex flex-col gap-4">
-          {dryers.map(machine => (
-            <MachineCard key={machine.id} machine={machine} onSelect={() => onSelectMachine(machine)} />
-          ))}
+        <div className={sliderContainerClass}>
+          {dryers.length > 0 ? (
+            dryers.map(machine => (
+              <div key={machine.id} className={slideItemClass}>
+                <MachineCard machine={machine} onSelect={() => onSelectMachine(machine)} />
+              </div>
+            ))
+          ) : (
+            <p className="text-blue-100 px-2">nu exista</p>
+          )}
         </div>
       </section>
     </div>
