@@ -1,41 +1,81 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from './firebase';
 
-const MachineCard = ({ machine }) => {
-  const isAvailable = machine.status === 'available';
+const MachineCard = ({ machine, onSelect }) => {
+  const [isAvailable, setIsAvailable] = useState(true);
+  const [timeRemaining, setTimeRemaining] = useState(0);
+
   const isWasher = machine.type === 'washer';
 
-  return (
-    <div className={`p-5 border rounded-xl shadow-sm transition-all ${
-      isAvailable ? 'border-green-500 bg-white' : 'border-orange-500 bg-orange-50'
-    }`}>
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-bold text-lg text-gray-800">{machine.name}</h3>
-        <span className="text-2xl" title={isWasher ? 'Mașină de spălat' : 'Uscător'}>
-          {isWasher ? '🌊' : '💨'}
-        </span>
-      </div>
+  useEffect(() => {
+    if (!machine?.id) return;
 
-      <div className="text-sm mb-1 text-gray-700">
-        Status: <span className={`font-semibold ${isAvailable ? 'text-green-600' : 'text-orange-600'}`}>
+    // interogare la firebase pentru orele din bookings
+    const q = query(collection(db, 'bookings'), where('machineId', '==', machine.id));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      // conversia datelor de timp
+      const bookings = snapshot.docs.map(doc => ({
+        start: doc.data().startTime.toDate(),
+        end: doc.data().endTime.toDate(),
+      }));
+
+      const checkStatus = () => {
+        const now = new Date();
+        
+        const activeBooking = bookings.find(b => now >= b.start && now < b.end);
+
+        if (activeBooking) {
+          setIsAvailable(false);
+          const diffMs = activeBooking.end.getTime() - now.getTime();
+          setTimeRemaining(Math.ceil(diffMs / (1000 * 60)));
+        } else {
+          setIsAvailable(true);
+          setTimeRemaining(0);
+        }
+      };
+
+      checkStatus(); 
+      
+      // timer intern pentru recalculare timp (sa nu facem mereu calluri) - chiar merge
+      const interval = setInterval(checkStatus, 60000);
+
+      return () => {
+        clearInterval(interval);
+      };
+    });
+
+    return () => unsubscribe();
+  }, [machine.id]);
+
+  return (
+    <div className="bg-white p-6 rounded-2xl shadow-xl w-full flex flex-col items-center text-center transition-transform active:scale-[0.98]">
+      
+      <div className="w-16 h-16 bg-[#eef2f6] rounded-full flex items-center justify-center mb-3 shadow-inner text-2xl">
+        {isWasher ? '🌊' : '💨'}
+      </div>
+      
+      <h3 className="font-bold text-xl text-[#2d4b8a] mb-1">{machine.name}</h3>
+      
+      <p className="text-sm text-gray-500 mb-5">
+        Status: <span className={`font-bold ml-1 ${isAvailable ? 'text-green-600' : 'text-orange-500'}`}>
           {isAvailable ? 'Disponibil' : 'În utilizare'}
         </span>
-      </div>
+      </p>
 
       {!isAvailable && (
-        <div className="text-sm text-gray-600">
-          Timp estimat rămas: <span className="font-medium">{machine.timeRemaining} min</span>
+        <div className="w-full border border-gray-100 bg-gray-50 rounded-lg py-2 mb-4 animate-fade-in">
+          <p className="text-xs text-gray-500 mb-1">Timp estimat rămas</p>
+          <p className="font-bold text-[#f59e0b]">{timeRemaining} minute</p>
         </div>
       )}
 
       <button
-        disabled={!isAvailable}
-        className={`mt-4 w-full py-2 rounded-lg font-medium transition-colors ${
-          isAvailable
-            ? 'bg-blue-600 text-white hover:bg-blue-700'
-            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-        }`}
+        onClick={onSelect}
+        className="w-full py-3 rounded-xl font-bold text-white transition-colors bg-[#3b5b9d] hover:bg-[#2d4b8a] shadow-md active:bg-[#1e366a]"
       >
-        {isAvailable ? 'Rezervă aparatul' : 'Indisponibil'}
+        Vezi Orarul & Rezervă
       </button>
     </div>
   );
