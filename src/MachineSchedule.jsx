@@ -4,14 +4,16 @@ import { format, addDays, subDays, isSameDay } from 'date-fns';
 import ro from 'date-fns/locale/ro';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
+import { CURRENT_USER_ID } from './config';
+import MachineIcon from './MachineIcon';
 
 // Setari
-const START_HOUR = 6;                        
-const END_HOUR = 24;                         
-const SLOT_MINUTES = 30;                     
-const MAX_SLOTS = (2 * 60) / SLOT_MINUTES;   
+const START_HOUR = 8;
+const END_HOUR = 21;
+const SLOT_MINUTES = 30;
+const MAX_SLOTS = (2 * 60) / SLOT_MINUTES;
 const BLOCK_PAST_SLOTS = true;
-const ROW_HEIGHT = 48;                      
+const ROW_HEIGHT = 48;
 
 const CELL_LABELS = {
   free: 'Disponibil',
@@ -29,6 +31,7 @@ const formatDuration = (minutes) => {
 
 const Portal = ({ children }) => createPortal(children, document.body);
 
+// Toate culorile vin din theme.css (variabilele --cal-*)
 const STYLES = `
 .mc-root {
   position: relative;
@@ -40,10 +43,11 @@ const STYLES = `
   padding: 16px;
   overflow: hidden;
   border-radius: 16px;
-  background: rgba(8, 15, 35, 0.35);
+  background: var(--cal-root-bg);
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
-  color: #fff;
+  color: var(--cal-text);
   font-family: inherit;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 .mc-root, .mc-root *, .mc-root *::before, .mc-root *::after,
 .mc-panel, .mc-panel *, .mc-modal, .mc-modal * { box-sizing: border-box; }
@@ -53,7 +57,7 @@ const STYLES = `
 .mc-back {
   display: flex; align-items: center; gap: 4px;
   padding: 8px 12px; border: 0; border-radius: 12px;
-  background: rgba(255, 255, 255, 0.08); color: #fff;
+  background: var(--cal-btn-bg); color: var(--cal-text);
   font: inherit; font-weight: 700; cursor: pointer;
 }
 .mc-back-label { display: none; }
@@ -68,21 +72,21 @@ const STYLES = `
 .mc-daynav {
   display: flex; align-items: center; justify-content: space-between;
   padding: 8px; margin-bottom: 8px;
-  border: 1px solid rgba(148, 163, 184, 0.45); border-radius: 12px;
-  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid var(--cal-nav-border); border-radius: 12px;
+  background: var(--cal-nav-bg);
 }
 .mc-daynav-btn {
   display: flex; align-items: center; justify-content: center;
   width: 40px; height: 40px; padding: 0; border: 0; border-radius: 8px;
-  background: transparent; color: #cbd5e1; cursor: pointer;
+  background: transparent; color: var(--cal-nav-icon); cursor: pointer;
 }
 .mc-daynav-btn svg { width: 24px; height: 24px; }
 .mc-daynav-label { display: flex; flex-direction: column; align-items: center; }
 .mc-daynav-day { font-size: 0.875rem; font-weight: 700; text-transform: capitalize; }
-.mc-daynav-date { font-size: 0.75rem; color: #cbd5e1; }
+.mc-daynav-date { font-size: 0.75rem; color: var(--cal-muted); }
 .mc-today-wrap { height: 20px; margin-bottom: 8px; text-align: center; }
 .mc-today {
-  padding: 0; border: 0; background: transparent; color: #7dd3fc;
+  padding: 0; border: 0; background: transparent; color: var(--cal-link);
   font: inherit; font-size: 0.75rem; font-weight: 600; cursor: pointer;
 }
 .mc-today:hover { text-decoration: underline; }
@@ -92,13 +96,13 @@ const STYLES = `
   flex: 1; min-height: 0;
   display: flex; flex-direction: column;
   overflow: hidden;
-  border: 1px solid #1e293b; border-radius: 12px;
-  background: #0f172a;
+  border: 1px solid var(--cal-table-border); border-radius: 12px;
+  background: var(--cal-table-bg);
 }
 .mc-head, .mc-row { display: grid; grid-template-columns: 8.25rem 1fr; }
 .mc-head {
   flex: none;
-  background: #334155;
+  background: var(--cal-head-bg); color: var(--cal-head-text);
   font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em;
 }
 .mc-head > div { padding: 12px 16px; }
@@ -110,7 +114,7 @@ const STYLES = `
   overscroll-behavior: contain;
 }
 .mc-body--padded { padding-bottom: 15rem; }
-.mc-row { height: 48px; border-bottom: 1px solid #1e293b; }
+.mc-row { height: 48px; border-bottom: 1px solid var(--cal-row-border); }
 .mc-time {
   display: flex; align-items: center;
   padding: 0 16px;
@@ -126,19 +130,19 @@ const STYLES = `
   -webkit-tap-highlight-color: transparent;
 }
 .mc-cell:disabled { cursor: not-allowed; opacity: 1; -webkit-text-fill-color: currentColor; }
-.mc-cell--free     { background: #0f2a24; color: #22c55e; border-left-color: #22c55e; }
-.mc-cell--busy     { background: #2a1520; color: #fca5a5; border-left-color: #ef4444; }
-.mc-cell--mine     { background: #16294d; color: #bfdbfe; border-left-color: #60a5fa; }
+.mc-cell--free     { background: var(--cal-free-bg); color: var(--cal-free-text); border-left-color: var(--cal-free-edge); }
+.mc-cell--busy     { background: var(--cal-busy-bg); color: var(--cal-busy-text); border-left-color: var(--cal-busy-edge); }
+.mc-cell--mine     { background: var(--cal-mine-bg); color: var(--cal-mine-text); border-left-color: var(--cal-mine-edge); }
 .mc-cell--selected {
-  background: rgba(14, 165, 233, 0.25); color: #e0f2fe; border-left-color: #38bdf8;
-  box-shadow: inset 0 0 0 2px rgba(56, 189, 248, 0.7);
+  background: var(--cal-sel-bg); color: var(--cal-sel-text); border-left-color: var(--cal-sel-edge);
+  box-shadow: inset 0 0 0 2px var(--cal-sel-edge);
 }
-.mc-cell--past     { background: #0d1424; color: #475569; border-left-color: #334155; }
+.mc-cell--past     { background: var(--cal-past-bg); color: var(--cal-past-text); border-left-color: var(--cal-past-edge); }
 @media (hover: hover) {
-  .mc-back:hover { background: rgba(255, 255, 255, 0.16); }
-  .mc-daynav-btn:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
-  .mc-cell--free:hover { background: #143629; }
-  .mc-cell--mine:hover { background: #1c3563; }
+  .mc-back:hover { background: var(--cal-btn-hover); }
+  .mc-daynav-btn:hover { background: var(--cal-btn-hover); color: var(--cal-nav-icon-hover); }
+  .mc-cell--free:hover { background: var(--cal-free-hover); }
+  .mc-cell--mine:hover { background: var(--cal-mine-hover); }
 }
 
 /* Panou flotant de confirmare */
@@ -153,23 +157,23 @@ const STYLES = `
 .mc-panel {
   width: 100%; max-width: 28rem;
   padding: 16px;
-  border: 1px solid #475569; border-radius: 16px;
-  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid var(--cal-panel-border); border-radius: 16px;
+  background: var(--cal-panel-bg);
   -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
-  color: #fff; font-family: inherit;
+  box-shadow: var(--cal-panel-shadow);
+  color: var(--cal-text); font-family: inherit;
   pointer-events: auto;
   animation: mc-slide-up 0.22s ease-out;
 }
 .mc-panel-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.mc-panel-sub { margin: 0; font-size: 0.875rem; color: #94a3b8; text-transform: capitalize; }
+.mc-panel-sub { margin: 0; font-size: 0.875rem; color: var(--cal-muted); text-transform: capitalize; }
 .mc-panel-range { margin: 4px 0 0; font-size: 1.25rem; font-weight: 800; line-height: 1.3; }
 .mc-badge {
   flex: none; padding: 4px 8px; border-radius: 8px;
-  background: rgba(14, 165, 233, 0.2); color: #bae6fd;
+  background: var(--cal-badge-bg); color: var(--cal-badge-text);
   font-size: 0.75rem; font-weight: 700; white-space: nowrap;
 }
-.mc-warn { margin: 0 0 12px; font-size: 0.75rem; font-weight: 600; color: #fbbf24; }
+.mc-warn { margin: 0 0 12px; font-size: 0.75rem; font-weight: 600; color: var(--cal-warn); }
 .mc-actions { display: flex; gap: 12px; }
 .mc-btn {
   padding: 12px; border-radius: 12px;
@@ -178,49 +182,50 @@ const STYLES = `
 }
 .mc-btn:active { transform: scale(0.98); }
 .mc-btn:disabled { opacity: 0.55; cursor: not-allowed; }
-.mc-btn--ghost { flex: 1; border: 2px solid #475569; background: transparent; color: #cbd5e1; }
-.mc-btn--primary { flex: 2; border: 0; background: #3b5b9d; color: #fff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); }
-.mc-btn--primary:hover:not(:disabled) { background: #2d4b8a; }
-.mc-btn--danger { width: 100%; border: 2px solid #ef4444; background: transparent; color: #f87171; }
+.mc-btn--ghost { flex: 1; border: 2px solid var(--cal-ghost-border); background: transparent; color: var(--cal-ghost-text); }
+.mc-btn--primary { flex: 2; border: 0; background: var(--btn-bg); color: #fff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); }
+.mc-btn--primary:hover:not(:disabled) { background: var(--btn-hover); }
+.mc-btn--danger { width: 100%; border: 2px solid var(--cal-danger); background: transparent; color: var(--cal-danger); }
 
 /* Fereastra de anulare a rezervării proprii */
 .mc-overlay {
   position: fixed; inset: 0; z-index: 50;
   display: flex; align-items: center; justify-content: center;
   padding: 16px;
-  background: rgba(2, 6, 23, 0.8);
+  background: var(--cal-overlay);
   -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
 }
 .mc-modal {
   position: relative;
   width: 100%; max-width: 24rem;
   padding: 24px;
-  border: 1px solid #334155; border-radius: 16px;
-  background: #0f172a;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
-  color: #fff; font-family: inherit;
+  border: 1px solid var(--cal-modal-border); border-radius: 16px;
+  background: var(--cal-modal-bg);
+  box-shadow: var(--cal-panel-shadow);
+  color: var(--cal-text); font-family: inherit;
   animation: mc-slide-up 0.22s ease-out;
 }
 .mc-modal-close {
   position: absolute; top: 10px; right: 16px;
   padding: 0; border: 0; background: transparent;
-  color: #64748b; font-size: 1.75rem; line-height: 1; cursor: pointer;
+  color: var(--cal-modal-close); font-size: 1.75rem; line-height: 1; cursor: pointer;
 }
 .mc-modal-title { margin: 0 0 4px; font-size: 1.25rem; font-weight: 800; }
-.mc-modal-sub { margin: 0 0 20px; font-size: 0.875rem; color: #94a3b8; text-transform: capitalize; }
+.mc-modal-sub { margin: 0 0 20px; font-size: 0.875rem; color: var(--cal-muted); text-transform: capitalize; }
 .mc-modal-time {
   margin: 0 0 24px; padding: 16px;
-  border: 1px solid #334155; border-radius: 12px;
-  background: rgba(30, 41, 59, 0.7);
-  text-align: center; font-size: 1.875rem; font-weight: 700; color: #bfdbfe;
+  border: 1px solid var(--cal-modal-time-border); border-radius: 12px;
+  background: var(--cal-modal-time-bg);
+  text-align: center; font-size: 1.875rem; font-weight: 700; color: var(--cal-modal-time-text);
 }
-.mc-modal-time span { margin: 0 4px; color: #64748b; }
+.mc-modal-time span { margin: 0 4px; color: var(--cal-modal-time-sep); }
 
 @keyframes mc-slide-up {
   from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: none; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .mc-root { transition: none; }
   .mc-panel, .mc-modal { animation: none; }
 }
 `;
@@ -229,13 +234,13 @@ const MachineCalendar = ({ machine, onBack }) => {
   const [events, setEvents] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [now, setNow] = useState(new Date());
-  const [selectedKeys, setSelectedKeys] = useState([]); 
+  const [selectedKeys, setSelectedKeys] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const bodyRef = useRef(null);
 
-  const currentUserId = "student-123";
+  const currentUserId = CURRENT_USER_ID;
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60 * 1000);
@@ -391,7 +396,12 @@ const MachineCalendar = ({ machine, onBack }) => {
           <span>←</span> <span className="mc-back-label">Înapoi</span>
         </button>
         <h2 className="mc-title">
-          {machine.name} <span>{machine.type === 'washer' ? '🌊' : '💨'}</span>
+          {machine.name}
+          <MachineIcon
+            type={machine.type}
+            size={24}
+            style={{ display: 'inline-block', verticalAlign: '-4px', marginLeft: 10, opacity: 0.85 }}
+          />
         </h2>
       </div>
 

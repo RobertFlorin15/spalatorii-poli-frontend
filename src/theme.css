@@ -1,0 +1,203 @@
+/* =========================================================
+   Teme: light (implicit) și dark ([data-theme="dark"])
+   Toate culorile aplicației vin de aici.
+   ========================================================= */
+
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  /* Aplicație */
+  --app-bg: #3a60a6;
+  --blob-1: #2d4b8a;
+  --blob-2: #1e366a;
+  --blob-3: #4167b1;
+  --on-bg: #ffffff;
+  --on-bg-muted: #dbeafe;
+
+  /* Carduri (MachineCard) */
+  --card-bg: #ffffff;
+  --card-border: #ffffff;
+  --card-title: #2d4b8a;
+  --card-muted: #6b7280;
+  --card-icon-bg: #eef2f6;
+  --card-inner-bg: #f9fafb;
+  --card-inner-border: #f3f4f6;
+  --ok: #16a34a;
+  --busy-text: #f97316;
+  --timer: #f59e0b;
+  --btn-bg: #3b5b9d;
+  --btn-hover: #2d4b8a;
+  --btn-active: #1e366a;
+
+  /* Buton de temă */
+  --toggle-bg: rgba(255, 255, 255, 0.16);
+  --toggle-hover: rgba(255, 255, 255, 0.28);
+  --toggle-icon: #ffffff;
+  --tab-active-bg: #ffffff;
+  --tab-active-text: #2d4b8a;
+  --chart-washer: #3b5b9d;
+  --chart-dryer: #0ea5e9;
+
+  /* Calendar */
+  --cal-root-bg: #ffffff;
+  --cal-text: #0f172a;
+  --cal-muted: #64748b;
+  --cal-btn-bg: #eef2f6;
+  --cal-btn-hover: #e2e8f0;
+  --cal-nav-bg: #f1f5f9;
+  --cal-nav-border: #cbd5e1;
+  --cal-nav-icon: #475569;
+  --cal-nav-icon-hover: #0f172a;
+  --cal-link: #2563eb;
+  --cal-table-bg: #ffffff;
+  --cal-table-border: #e2e8f0;
+  --cal-head-bg: #e2e8f0;
+  --cal-head-text: #334155;
+  --cal-row-border: #e2e8f0;
+
+  --cal-free-bg: #dcfce7;
+  --cal-free-text: #15803d;
+  --cal-free-edge: #22c55e;
+  --cal-free-hover: #bbf7d0;
+  --cal-busy-bg: #fee2e2;
+  --cal-busy-text: #b91c1c;
+  --cal-busy-edge: #ef4444;
+  --cal-mine-bg: #dbeafe;
+  --cal-mine-text: #1d4ed8;
+  --cal-mine-edge: #3b82f6;
+  --cal-mine-hover: #bfdbfe;
+  --cal-sel-bg: rgba(14, 165, 233, 0.18);
+  --cal-sel-text: #0369a1;
+  --cal-sel-edge: #0ea5e9;
+  --cal-past-bg: #f1f5f9;
+  --cal-past-text: #94a3b8;
+  --cal-past-edge: #cbd5e1;
+
+  --cal-panel-bg: rgba(255, 255, 255, 0.97);
+  --cal-panel-border: #cbd5e1;
+  --cal-panel-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);
+  --cal-badge-bg: rgba(14, 165, 233, 0.15);
+  --cal-badge-text: #0369a1;
+  --cal-warn: #b45309;
+  --cal-ghost-border: #cbd5e1;
+  --cal-ghost-text: #475569;
+  --cal-overlay: rgba(15, 23, 42, 0.55);
+  --cal-modal-bg: #ffffff;
+  --cal-modal-border: #e2e8f0;
+  --cal-modal-close: #94a3b8;
+  --cal-modal-time-bg: #f1f5f9;
+  --cal-modal-time-border: #e2e8f0;
+  --cal-modal-time-text: #1d4ed8;
+  --cal-modal-time-sep: #94a3b8;
+  --cal-danger: #dc2626;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Aplicație */
+  --app-bg: #060b16;
+  --blob-1: #0b1426;
+  --blob-2: #08101f;
+  --blob-3: #0f1a33;
+  --on-bg: #f1f5f9;
+  --on-bg-muted: #94a3b8;
+
+  /* Carduri */
+  --card-bg: #1b2a4a;
+  --card-border: #3a5084;
+  --card-title: #dbeafe;
+  --card-muted: #a9b8d3;
+  --card-icon-bg: #2a3c66;
+  --card-inner-bg: #14203b;
+  --card-inner-border: #3a5084;
+  --ok: #4ade80;
+  --busy-text: #fb923c;
+  --timer: #fbbf24;
+  --btn-bg: #4a72c4;
+  --btn-hover: #5a82d4;
+  --btn-active: #3b5fab;
+
+  /* Buton de temă */
+  --toggle-bg: rgba(255, 255, 255, 0.08);
+  --toggle-hover: rgba(255, 255, 255, 0.18);
+  --toggle-icon: #ffffff;
+  --tab-active-bg: #4a72c4;
+  --tab-active-text: #ffffff;
+  --chart-washer: #6c93e0;
+  --chart-dryer: #38bdf8;
+
+  /* Calendar */
+  --cal-root-bg: rgba(8, 15, 35, 0.35);
+  --cal-text: #ffffff;
+  --cal-muted: #cbd5e1;
+  --cal-btn-bg: rgba(255, 255, 255, 0.08);
+  --cal-btn-hover: rgba(255, 255, 255, 0.16);
+  --cal-nav-bg: rgba(15, 23, 42, 0.45);
+  --cal-nav-border: rgba(148, 163, 184, 0.45);
+  --cal-nav-icon: #cbd5e1;
+  --cal-nav-icon-hover: #ffffff;
+  --cal-link: #7dd3fc;
+  --cal-table-bg: #0f172a;
+  --cal-table-border: #1e293b;
+  --cal-head-bg: #334155;
+  --cal-head-text: #ffffff;
+  --cal-row-border: #1e293b;
+
+  --cal-free-bg: #0f2a24;
+  --cal-free-text: #22c55e;
+  --cal-free-edge: #22c55e;
+  --cal-free-hover: #143629;
+  --cal-busy-bg: #2a1520;
+  --cal-busy-text: #fca5a5;
+  --cal-busy-edge: #ef4444;
+  --cal-mine-bg: #16294d;
+  --cal-mine-text: #bfdbfe;
+  --cal-mine-edge: #60a5fa;
+  --cal-mine-hover: #1c3563;
+  --cal-sel-bg: rgba(14, 165, 233, 0.25);
+  --cal-sel-text: #e0f2fe;
+  --cal-sel-edge: #38bdf8;
+  --cal-past-bg: #0d1424;
+  --cal-past-text: #475569;
+  --cal-past-edge: #334155;
+
+  --cal-panel-bg: rgba(15, 23, 42, 0.96);
+  --cal-panel-border: #475569;
+  --cal-panel-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  --cal-badge-bg: rgba(14, 165, 233, 0.2);
+  --cal-badge-text: #bae6fd;
+  --cal-warn: #fbbf24;
+  --cal-ghost-border: #475569;
+  --cal-ghost-text: #cbd5e1;
+  --cal-overlay: rgba(2, 6, 23, 0.8);
+  --cal-modal-bg: #0f172a;
+  --cal-modal-border: #334155;
+  --cal-modal-close: #64748b;
+  --cal-modal-time-bg: rgba(30, 41, 59, 0.7);
+  --cal-modal-time-border: #334155;
+  --cal-modal-time-text: #bfdbfe;
+  --cal-modal-time-sep: #64748b;
+  --cal-danger: #f87171;
+}
+
+body,
+.theme-fade {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  body,
+  .theme-fade { transition: none; }
+}
+
+.view-enter {
+  animation: view-in 0.5s ease-out backwards;
+}
+@keyframes view-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .view-enter { animation: none; }
+}
