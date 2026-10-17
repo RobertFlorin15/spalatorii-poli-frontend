@@ -1,12 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { collection, onSnapshot } from 'firebase/firestore';
-import { db } from './firebase';
+import { machinesApi } from './data';
+import { logError } from './utils/logger';
 import MachineCard from './MachineCard';
 
+/**
+ * Slider orizontal cu indicator de poziție (cercuri, ca la Instagram).
+ * Cercul activ e mai mare și mai opac, cele vecine sunt puțin mai mici,
+ * iar cele îndepărtate se micșorează — arată unde ești față de restul.
+ */
 const MachineSlider = ({ items, onSelectMachine }) => {
   const containerRef = useRef(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
+  // Calculează care slide e cel mai aproape de centrul containerului
   const updateActiveIndex = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -33,6 +39,7 @@ const MachineSlider = ({ items, onSelectMachine }) => {
     return () => window.removeEventListener('resize', updateActiveIndex);
   }, [items.length, updateActiveIndex]);
 
+  // Click pe cerc -> derulează la slide-ul respectiv
   const goTo = (index) => {
     const container = containerRef.current;
     const child = container?.children[index];
@@ -43,7 +50,7 @@ const MachineSlider = ({ items, onSelectMachine }) => {
     });
   };
 
-  
+  // Stil pentru fiecare cerc, în funcție de distanța față de cel activ
   const dotClass = (i) => {
     const distance = Math.abs(i - activeIndex);
     if (distance === 0) return 'w-2.5 h-2.5 bg-white';
@@ -57,19 +64,19 @@ const MachineSlider = ({ items, onSelectMachine }) => {
       <div
         ref={containerRef}
         onScroll={updateActiveIndex}
-        className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+        className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] lg:grid lg:grid-cols-3 lg:overflow-visible"
       >
         {items.map((machine) => (
-          <div key={machine.id} className="min-w-[100%] sm:min-w-[280px] snap-center shrink-0">
+          <div key={machine.id} className="min-w-[100%] sm:min-w-[280px] lg:min-w-0 snap-center shrink-0">
             <MachineCard machine={machine} onSelect={() => onSelectMachine(machine)} />
           </div>
         ))}
       </div>
 
-      {/* Indicator cercuri */}
+      {/* Indicator cercuri — apare doar dacă sunt cel puțin 2 elemente */}
       {items.length > 1 && (
         <div
-          className="flex justify-center items-center gap-1.5 mt-1"
+          className="flex lg:hidden justify-center items-center gap-1.5 mt-1"
           role="tablist"
           aria-label="Poziția în listă"
         >
@@ -95,15 +102,13 @@ const MachineList = ({ onSelectMachine }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(
-      collection(db, 'machines'),
-      (snapshot) => {
-        const machinesData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        setMachines(machinesData);
+    const unsubscribe = machinesApi.subscribe(
+      (list) => {
+        setMachines(list);
         setLoading(false);
       },
       (error) => {
-        console.error('Eroare Firebase:', error);
+        logError('machines', error);
         setLoading(false);
       }
     );

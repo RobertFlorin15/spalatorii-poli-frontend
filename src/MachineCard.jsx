@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { db } from './firebase';
+import { bookingsApi } from './data';
+import { logError } from './utils/logger';
 import MachineIcon from './MachineIcon';
 
 const MachineCard = ({ machine, onSelect }) => {
@@ -10,41 +10,38 @@ const MachineCard = ({ machine, onSelect }) => {
   useEffect(() => {
     if (!machine?.id) return;
 
-    let interval = null;
+    let bookings = [];
 
-    // interogare la firebase pentru orele din bookings
-    const q = query(collection(db, 'bookings'), where('machineId', '==', machine.id));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      // conversia datelor de timp
-      const bookings = snapshot.docs.map((doc) => ({
-        start: doc.data().startTime.toDate(),
-        end: doc.data().endTime.toDate(),
-      }));
+    const checkStatus = () => {
+      const now = new Date();
+      const activeBooking = bookings.find((b) => now >= b.start && now < b.end);
 
-      const checkStatus = () => {
-        const now = new Date();
-        const activeBooking = bookings.find((b) => now >= b.start && now < b.end);
+      if (activeBooking) {
+        setIsAvailable(false);
+        const diffMs = activeBooking.end.getTime() - now.getTime();
+        setTimeRemaining(Math.ceil(diffMs / (1000 * 60)));
+      } else {
+        setIsAvailable(true);
+        setTimeRemaining(0);
+      }
+    };
 
-        if (activeBooking) {
-          setIsAvailable(false);
-          const diffMs = activeBooking.end.getTime() - now.getTime();
-          setTimeRemaining(Math.ceil(diffMs / (1000 * 60)));
-        } else {
-          setIsAvailable(true);
-          setTimeRemaining(0);
-        }
-      };
+    // Primim doar intervalele ocupate (fără datele altor utilizatori)
+    const unsubscribe = bookingsApi.subscribeMachineBookings(
+      machine.id,
+      (list) => {
+        bookings = list;
+        checkStatus();
+      },
+      (error) => logError('machine-card', error)
+    );
 
-      checkStatus();
-
-      // la fiecare snapshot nou oprim timerul vechi, ca să nu se adune mai multe
-      if (interval) clearInterval(interval);
-      interval = setInterval(checkStatus, 60000);
-    });
+    // recalculăm timpul rămas din minut în minut, fără cereri noi
+    const interval = setInterval(checkStatus, 60000);
 
     return () => {
       unsubscribe();
-      if (interval) clearInterval(interval);
+      clearInterval(interval);
     };
   }, [machine.id]);
 

@@ -1,16 +1,40 @@
-# React + Vite
+# Spălătorie — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicație web pentru programarea mașinilor de spălat și uscătoarelor din cămin.
 
-Currently, two official plugins are available:
+## Funcționalități
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Lista utilajelor**: vizualizare rapidă a mașinilor de spălat și a uscătoarelor disponibile, cu filtrare și stare în timp real.
+- **Programare pe intervale**: tabel interactiv pe intervale de 30 de minute pentru selectarea și rezervarea unui interval.
+- **Rezervările mele**: vizualizarea rezervărilor active și a istoricului, cu posibilitatea de anulare sau scurtare a unei rezervări în curs.
+- **Panou Administrator**: adăugare/ștergere utilaje, activare/dezactivare și configurarea programului de funcționare și a duratei maxime per rezervare.
+- **Temă Light / Dark**: suport complet pentru mod luminos și întunecat.
 
-## React Compiler
+## Tehnologii
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- React 19 + Vite
+- Tailwind CSS v4
+- Firebase Firestore
+- `date-fns`
 
-## Expanding the ESLint configuration
+## Rulare locală
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+1. Instalează dependențele:
+   ```bash
+   npm install
+   ```
+
+2. Configurează variabilele de mediu într-un fișier `.env` (dacă folosești provider-ul Firestore):
+   ```env
+   VITE_FIREBASE_API_KEY=...
+   VITE_FIREBASE_AUTH_DOMAIN=...
+   VITE_FIREBASE_PROJECT_ID=...
+   VITE_FIREBASE_STORAGE_BUCKET=...
+   VITE_FIREBASE_MESSAGING_SENDER_ID=...
+   VITE_FIREBASE_APP_ID=...
+   ```
+
+3. Pornește serverul de dezvoltare:
+   ```bash
+   npm run dev
+   ```

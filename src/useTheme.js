@@ -15,27 +15,20 @@ const getInitialTheme = () => {
   return getSystemTheme();
 };
 
-/**
- * Returnează [theme, toggleTheme].
- * - prima dată folosește tema sistemului (telefon / browser)
- * - după ce utilizatorul apasă butonul, alegerea se salvează
- */
 export function useTheme() {
   const [theme, setTheme] = useState(getInitialTheme);
 
-  // Aplică tema pe <html> înainte de randare, ca să nu apară un "flash"
   useLayoutEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // Dacă utilizatorul nu a ales manual, urmărește schimbările din sistem
   useEffect(() => {
     const media = window.matchMedia?.('(prefers-color-scheme: dark)');
     if (!media) return;
 
     const onChange = () => {
       let saved = null;
-      try { saved = localStorage.getItem(STORAGE_KEY); } catch { /* ignoră */ }
+      try { saved = localStorage.getItem(STORAGE_KEY); } catch { /* ignora */ }
       if (!saved) setTheme(media.matches ? 'dark' : 'light');
     };
 
@@ -46,7 +39,7 @@ export function useTheme() {
   const toggleTheme = useCallback(() => {
     setTheme((current) => {
       const next = current === 'dark' ? 'light' : 'dark';
-      try { localStorage.setItem(STORAGE_KEY, next); } catch { /* ignoră */ }
+      try { localStorage.setItem(STORAGE_KEY, next); } catch { /* ignora */ }
       return next;
     });
   }, []);

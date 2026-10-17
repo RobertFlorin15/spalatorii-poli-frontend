@@ -1,13 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  collection, query, where, onSnapshot,
-  deleteDoc, updateDoc, doc, Timestamp,
-} from 'firebase/firestore';
+import { machinesApi, bookingsApi } from './data';
+import { userMessage } from './data/errors';
+import { logError } from './utils/logger';
 import { format, isSameDay, addDays, differenceInMinutes } from 'date-fns';
 import ro from 'date-fns/locale/ro';
-import { db } from './firebase';
-import { CURRENT_USER_ID } from './config';
 import MachineIcon from './MachineIcon';
 import SegmentedTabs from './SegmentedTabs';
 
@@ -117,6 +114,8 @@ const StatTile = ({ label, value }) => (
   </div>
 );
 
+/* --------------------------------------------------------- */
+
 const MyBookings = ({ onGoToMachines }) => {
   const [bookings, setBookings] = useState([]);
   const [machines, setMachines] = useState({});
@@ -125,6 +124,7 @@ const MyBookings = ({ onGoToMachines }) => {
   const [now, setNow] = useState(new Date());
   const [pending, setPending] = useState(null); // { booking, kind }
   const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState(null);
 
   // Actualizăm "acum" în fiecare minut
   useEffect(() => {
@@ -134,35 +134,26 @@ const MyBookings = ({ onGoToMachines }) => {
 
   // Mașinile (id -> {name, type})
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'machines'), (snap) => {
-      const map = {};
-      snap.docs.forEach((d) => { map[d.id] = d.data(); });
-      setMachines(map);
-    });
+    const unsub = machinesApi.subscribe(
+      (list) => {
+        const map = {};
+        list.forEach((m) => { map[m.id] = m; });
+        setMachines(map);
+      },
+      (error) => logError('machines', error)
+    );
     return () => unsub();
   }, []);
 
-  // Rezervările utilizatorului curent
+  // Rezervările utilizatorului curent (serverul îl știe din sesiune, nu îl trimitem noi)
   useEffect(() => {
-    const q = query(collection(db, 'bookings'), where('userId', '==', CURRENT_USER_ID));
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        setBookings(
-          snap.docs.map((d) => {
-            const data = d.data();
-            return {
-              id: d.id,
-              machineId: data.machineId,
-              start: data.startTime.toDate(),
-              end: data.endTime.toDate(),
-            };
-          })
-        );
+    const unsub = bookingsApi.subscribeMyBookings(
+      (list) => {
+        setBookings(list);
         setLoading(false);
       },
       (error) => {
-        console.error('Eroare la încărcarea rezervărilor:', error);
+        logError('my-bookings', error);
         setLoading(false);
       }
     );
@@ -197,6 +188,7 @@ const MyBookings = ({ onGoToMachines }) => {
       sessions += 1;
     });
 
+    // toate mașinile existente (și cele cu 0 ore), plus eventuale mașini șterse
     const ids = new Set([...Object.keys(machines), ...Object.keys(minutesById)]);
     const rows = [...ids]
       .map((id) => ({
@@ -214,17 +206,17 @@ const MyBookings = ({ onGoToMachines }) => {
   const runAction = async () => {
     if (!pending || busy) return;
     setBusy(true);
+    setActionError(null);
     try {
-      const ref = doc(db, 'bookings', pending.booking.id);
       if (pending.kind === 'release') {
-        await updateDoc(ref, { endTime: Timestamp.now() });
+        await bookingsApi.release(pending.booking.id);
       } else {
-        await deleteDoc(ref);
+        await bookingsApi.cancel(pending.booking.id);
       }
       setPending(null);
     } catch (error) {
-      console.error('Eroare la modificarea rezervării:', error);
-      alert('Acțiunea nu a putut fi efectuată. Încearcă din nou.');
+      logError('booking:action', error);
+      setActionError(userMessage(error));
     } finally {
       setBusy(false);
     }
@@ -277,7 +269,7 @@ const MyBookings = ({ onGoToMachines }) => {
 
         <button
           type="button"
-          onClick={() => setPending({ booking: b, kind })}
+          onClick={() => { setActionError(null); setPending({ booking: b, kind }); }}
           className={`mt-3 w-full py-2.5 rounded-xl text-sm font-bold border-2 transition active:scale-[0.98] ${
             kind === 'release'
               ? 'border-[color:var(--btn-bg)] text-[color:var(--card-title)]'
@@ -306,7 +298,7 @@ const MyBookings = ({ onGoToMachines }) => {
   const copy = pending ? CONFIRM_COPY[pending.kind] : null;
 
   return (
-    <div className="w-full flex flex-col gap-4">
+    <div className="w-full flex flex-col gap-4 lg:max-w-3xl lg:mx-auto">
       <h2 className="text-xl font-bold text-[color:var(--on-bg)] drop-shadow-sm px-2">
         Rezervările mele
       </h2>
@@ -332,7 +324,7 @@ const MyBookings = ({ onGoToMachines }) => {
                 {dayLabel(group.date, now)}
                 <span className="font-normal"> · {format(group.date, 'dd MMM', { locale: ro })}</span>
               </h3>
-              <ul className="flex flex-col gap-3">{group.items.map(renderCard)}</ul>
+              <ul className="flex flex-col gap-3 lg:grid lg:grid-cols-2">{group.items.map(renderCard)}</ul>
             </section>
           ))
         )
@@ -379,6 +371,12 @@ const MyBookings = ({ onGoToMachines }) => {
               {' · '}
               {format(pending.booking.start, 'dd MMM', { locale: ro })}, {format(pending.booking.start, 'HH:mm')} - {format(pending.booking.end, 'HH:mm')}
             </p>
+
+            {actionError && (
+              <p role="alert" className="text-sm font-bold text-[color:var(--cal-danger)] mb-3">
+                {actionError}
+              </p>
+            )}
 
             <div className="flex gap-3">
               <button

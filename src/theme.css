@@ -1,8 +1,3 @@
-/* =========================================================
-   Teme: light (implicit) și dark ([data-theme="dark"])
-   Toate culorile aplicației vin de aici.
-   ========================================================= */
-
 :root,
 :root[data-theme="light"] {
   color-scheme: light;
@@ -38,6 +33,7 @@
   --tab-active-text: #2d4b8a;
   --chart-washer: #3b5b9d;
   --chart-dryer: #0ea5e9;
+  --field-border: #cbd5e1;
 
   /* Calendar */
   --cal-root-bg: #ffffff;
@@ -127,6 +123,7 @@
   --tab-active-text: #ffffff;
   --chart-washer: #6c93e0;
   --chart-dryer: #38bdf8;
+  --field-border: #3a5084;
 
   /* Calendar */
   --cal-root-bg: rgba(8, 15, 35, 0.35);
@@ -182,6 +179,7 @@
   --cal-danger: #f87171;
 }
 
+/* Tranziție lină la schimbarea temei */
 body,
 .theme-fade {
   transition: background-color 0.3s ease, color 0.3s ease;
@@ -191,6 +189,7 @@ body,
   .theme-fade { transition: none; }
 }
 
+/* Apariția conținutului la schimbarea paginii */
 .view-enter {
   animation: view-in 0.5s ease-out backwards;
 }
@@ -200,4 +199,121 @@ body,
 }
 @media (prefers-reduced-motion: reduce) {
   .view-enter { animation: none; }
+}
+
+/* =========================================================
+   Cercuri animate de fundal (Background Blobs)
+   Pe mobil sunt la colțuri; pe tabletă și desktop sunt mărite
+   și ancorate față de centrul ecranului (50%), astfel încât
+   animația între scene să traverseze direct zona de conținut.
+   ========================================================= */
+.bg-blob {
+  position: fixed;
+  border-radius: 9999px;
+  pointer-events: none;
+  transition: transform 1400ms ease-in-out;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bg-blob { transition: none; }
+}
+
+.bg-blob-1 {
+  top: -10%;
+  right: -20%;
+  width: 400px;
+  height: 400px;
+  background-color: var(--blob-1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  opacity: 0.9;
+}
+
+.bg-blob-2 {
+  bottom: -15%;
+  left: -20%;
+  width: 500px;
+  height: 500px;
+  background-color: var(--blob-2);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.bg-blob-3 {
+  top: 30%;
+  left: -25%;
+  width: 350px;
+  height: 350px;
+  background-color: var(--blob-3);
+  opacity: 0.4;
+}
+
+/* Tabletă (768px+) */
+@media (min-width: 768px) {
+  .bg-blob-1 {
+    top: -12%;
+    right: auto;
+    left: calc(50% - 60px);
+    width: 580px;
+    height: 580px;
+  }
+
+  .bg-blob-2 {
+    bottom: -15%;
+    left: calc(50% - 520px);
+    width: 680px;
+    height: 680px;
+  }
+
+  .bg-blob-3 {
+    top: 25%;
+    left: calc(50% - 360px);
+    width: 500px;
+    height: 500px;
+    opacity: 0.5;
+  }
+}
+
+/* Desktop (1024px+) */
+@media (min-width: 1024px) {
+  .bg-blob-1 {
+    top: -15%;
+    left: calc(50% - 50px);
+    width: 760px;
+    height: 760px;
+  }
+
+  .bg-blob-2 {
+    bottom: -18%;
+    left: calc(50% - 660px);
+    width: 860px;
+    height: 860px;
+  }
+
+  .bg-blob-3 {
+    top: 20%;
+    left: calc(50% - 420px);
+    width: 650px;
+    height: 650px;
+    opacity: 0.55;
+  }
+}
+
+/* Monitoare mari / Ultrawide (1440px+) */
+@media (min-width: 1440px) {
+  .bg-blob-1 {
+    width: 880px;
+    height: 880px;
+    left: calc(50% - 40px);
+  }
+
+  .bg-blob-2 {
+    width: 980px;
+    height: 980px;
+    left: calc(50% - 720px);
+  }
+
+  .bg-blob-3 {
+    width: 750px;
+    height: 750px;
+    left: calc(50% - 460px);
+  }
 }

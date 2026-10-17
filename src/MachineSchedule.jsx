@@ -2,16 +2,14 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { format, addDays, subDays, isSameDay } from 'date-fns';
 import ro from 'date-fns/locale/ro';
-import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
-import { db } from './firebase';
-import { CURRENT_USER_ID } from './config';
+import { bookingsApi } from './data';
+import { userMessage } from './data/errors';
+import { logError } from './utils/logger';
 import MachineIcon from './MachineIcon';
+import { useSettings } from './useSettings';
+import { SLOT_MINUTES } from './settingsModel';
 
-// Setari
-const START_HOUR = 8;
-const END_HOUR = 21;
-const SLOT_MINUTES = 30;
-const MAX_SLOTS = (2 * 60) / SLOT_MINUTES;
+// Setări fixe. Programul și limita per rezervare vin din Firestore (vezi useSettings)
 const BLOCK_PAST_SLOTS = true;
 const ROW_HEIGHT = 48;
 
@@ -51,6 +49,10 @@ const STYLES = `
 }
 .mc-root, .mc-root *, .mc-root *::before, .mc-root *::after,
 .mc-panel, .mc-panel *, .mc-modal, .mc-modal * { box-sizing: border-box; }
+
+@media (min-width: 1024px) {
+  .mc-root { max-width: 48rem; margin: 0 auto; }
+}
 
 /* Antet */
 .mc-top { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
@@ -238,9 +240,12 @@ const MachineCalendar = ({ machine, onBack }) => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [bookError, setBookError] = useState(null);
   const bodyRef = useRef(null);
 
-  const currentUserId = CURRENT_USER_ID;
+  // Setările setate de administrator (se actualizează în timp real)
+  const { openMinutes, closeMinutes, maxSlots: MAX_SLOTS } = useSettings();
+
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60 * 1000);
@@ -249,21 +254,12 @@ const MachineCalendar = ({ machine, onBack }) => {
 
   useEffect(() => {
     if (!machine?.id) return;
-    const q = query(collection(db, 'bookings'), where('machineId', '==', machine.id));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedEvents = snapshot.docs.map(docSnap => {
-        const data = docSnap.data();
-        return {
-          id: docSnap.id,
-          title: data.userId === currentUserId ? 'Rezervarea mea' : 'Ocupat',
-          start: data.startTime.toDate(),
-          end: data.endTime.toDate(),
-          userId: data.userId,
-          status: data.status
-        };
-      });
-      setEvents(fetchedEvents);
-    });
+    // Primim doar intervale (început, sfârșit, "mine: da/nu"), fără id-urile altor utilizatori
+    const unsubscribe = bookingsApi.subscribeMachineBookings(
+      machine.id,
+      (list) => setEvents(list),
+      (error) => logError('calendar', error)
+    );
     return () => unsubscribe();
   }, [machine?.id]);
 
@@ -271,21 +267,21 @@ const MachineCalendar = ({ machine, onBack }) => {
     const y = currentDate.getFullYear();
     const m = currentDate.getMonth();
     const d = currentDate.getDate();
-    const total = ((END_HOUR - START_HOUR) * 60) / SLOT_MINUTES;
+    const total = (closeMinutes - openMinutes) / SLOT_MINUTES;
 
     return Array.from({ length: total }, (_, i) => {
-      const startMin = START_HOUR * 60 + i * SLOT_MINUTES;
+      const startMin = openMinutes + i * SLOT_MINUTES;
       const start = new Date(y, m, d, 0, startMin);
       const end = new Date(y, m, d, 0, startMin + SLOT_MINUTES);
       return { key: start.getTime(), start, end };
     });
-  }, [currentDate]);
+  }, [currentDate, openMinutes, closeMinutes]);
 
   const slotStates = useMemo(() => {
     return slots.map(slot => {
       const event = events.find(e => slot.start < e.end && slot.end > e.start);
       if (event) {
-        return { status: event.userId === currentUserId ? 'mine' : 'busy', event };
+        return { status: event.mine ? 'mine' : 'busy', event };
       }
       if (BLOCK_PAST_SLOTS && slot.end <= now) return { status: 'past' };
       return { status: 'free' };
@@ -293,8 +289,10 @@ const MachineCalendar = ({ machine, onBack }) => {
   }, [slots, events, now]);
 
   const selectedSlots = useMemo(
-    () => slots.filter((slot, i) => slotStates[i].status === 'free' && selectedKeys.includes(slot.key)),
-    [slots, slotStates, selectedKeys]
+    () => slots
+      .filter((slot, i) => slotStates[i].status === 'free' && selectedKeys.includes(slot.key))
+      .slice(0, MAX_SLOTS),
+    [slots, slotStates, selectedKeys, MAX_SLOTS]
   );
 
   const selectedRanges = useMemo(() => {
@@ -324,9 +322,10 @@ const MachineCalendar = ({ machine, onBack }) => {
     }
     const idx = slots.findIndex(s => s.end > new Date());
     body.scrollTop = (idx === -1 ? slots.length : idx) * ROW_HEIGHT;
-  }, [dayKey]);
+  }, [dayKey, openMinutes]);
 
   const handleSlotClick = (slot, state) => {
+    setBookError(null);
     if (state.status === 'mine') {
       setSelectedEvent(state.event);
       setShowDeleteModal(true);
@@ -346,35 +345,30 @@ const MachineCalendar = ({ machine, onBack }) => {
   const handleBook = async () => {
     if (selectedRanges.length === 0 || isSaving) return;
     setIsSaving(true);
+    setBookError(null);
 
     try {
-      await Promise.all(
-        selectedRanges.map(range =>
-          addDoc(collection(db, 'bookings'), {
-            machineId: machine.id,
-            userId: currentUserId,
-            startTime: Timestamp.fromDate(range.start),
-            endTime: Timestamp.fromDate(range.end),
-            status: 'active',
-            createdAt: Timestamp.now()
-          })
-        )
-      );
+      // O singură cerere atomică. Serverul verifică programul, limita, suprapunerile și ora.
+      await bookingsApi.create(machine.id, selectedRanges);
       setSelectedKeys([]);
     } catch (error) {
-      console.error("Eroare la crearea rezervării:", error);
-      alert("Rezervarea nu a putut fi salvată. Încearcă din nou.");
+      logError('booking:create', error);
+      setBookError(userMessage(error));
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDelete = async () => {
+    const target = selectedEvent;
     setShowDeleteModal(false);
+    if (!target) return;
+
     try {
-      await deleteDoc(doc(db, 'bookings', selectedEvent.id));
+      await bookingsApi.cancel(target.id);
     } catch (error) {
-      console.error("Eroare la ștergerea rezervării:", error);
+      logError('booking:cancel', error);
+      setBookError(userMessage(error));
     }
   };
 
@@ -392,8 +386,11 @@ const MachineCalendar = ({ machine, onBack }) => {
 
       {/* Antet */}
       <div className="mc-top">
-        <button className="mc-back" onClick={onBack}>
-          <span>←</span> <span className="mc-back-label">Înapoi</span>
+        <button className="mc-back" onClick={onBack} aria-label="Înapoi">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+          <span className="mc-back-label">Înapoi</span>
         </button>
         <h2 className="mc-title">
           {machine.name}
@@ -426,6 +423,10 @@ const MachineCalendar = ({ machine, onBack }) => {
           <button className="mc-today" onClick={goToToday}>Revino la ziua de azi</button>
         )}
       </div>
+
+      {bookError && selectedSlots.length === 0 && (
+        <p className="mc-warn" role="alert">{bookError}</p>
+      )}
 
       {/* Forma tabelului */}
       <div className="mc-table">
@@ -484,6 +485,10 @@ const MachineCalendar = ({ machine, onBack }) => {
                 <p className="mc-warn">
                   Ai atins limita de {formatDuration(MAX_SLOTS * SLOT_MINUTES)} pe rezervare.
                 </p>
+              )}
+
+              {bookError && (
+                <p className="mc-warn" role="alert">{bookError}</p>
               )}
 
               <div className="mc-actions">
