@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import './theme.css';
-import { useTheme } from './useTheme';
-import { AuthProvider, useAuth } from './auth/AuthContext';
-import ThemeToggle from './ThemeToggle';
-import SegmentedTabs from './SegmentedTabs';
-import MachineList from './MachineList';
-import MachineSchedule from './MachineSchedule';
-import MyBookings from './MyBookings';
-import AdminPanel from './AdminPanel';
-import LoginPage from './LoginPage';
+import { useTheme } from './hooks/useTheme';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import ThemeToggle from './components/ThemeToggle/ThemeToggle';
+import SegmentedTabs from './components/SegmentedTabs/SegmentedTabs';
+import MachineList from './pages/MachineList/MachineList';
+import MachineSchedule from './pages/MachineSchedule/MachineSchedule';
+import MyBookings from './pages/MyBookings/MyBookings';
+import AdminPanel from './pages/AdminPanel/AdminPanel';
+import LoginPage from './pages/LoginPage/LoginPage';
 
 // Poziția fiecărui cerc (în ordine: blob 1, 2, 3) pentru fiecare "scenă".
 // Valorile în % sunt relative la dimensiunea cercului, deci arată la fel pe orice ecran.

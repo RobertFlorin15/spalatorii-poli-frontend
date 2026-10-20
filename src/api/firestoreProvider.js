@@ -2,10 +2,10 @@ import {
   collection, doc, query, where, onSnapshot, writeBatch,
   deleteDoc, updateDoc, setDoc, Timestamp, serverTimestamp,
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db } from './firebase';
 import { getSessionUserId } from './session';
 import { ApiError } from './errors';
-import { validateSettings } from '../settingsModel';
+import { validateSettings } from '../utils/settingsModel';
 
 /**
  * Provider de date bazat pe Cloud Firestore.

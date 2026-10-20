@@ -1,5 +1,6 @@
 import React from 'react';
-import { useAuth } from './auth/AuthContext';
+import { useAuth } from '../../context/AuthContext';
+import './LoginPage.scss';
 
 /**
  * Pagina de autentificare (se afișează când nu există o sesiune activă).

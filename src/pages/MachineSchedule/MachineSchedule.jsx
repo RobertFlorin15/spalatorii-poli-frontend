@@ -2,12 +2,13 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { format, addDays, subDays, isSameDay } from 'date-fns';
 import ro from 'date-fns/locale/ro';
-import { bookingsApi } from './data';
-import { userMessage } from './data/errors';
-import { logError } from './utils/logger';
-import MachineIcon from './MachineIcon';
-import { useSettings } from './useSettings';
-import { SLOT_MINUTES } from './settingsModel';
+import { bookingsApi } from '../../api';
+import { userMessage } from '../../api/errors';
+import { logError } from '../../utils/logger';
+import MachineIcon from '../../components/MachineIcon/MachineIcon';
+import { useSettings } from '../../hooks/useSettings';
+import { SLOT_MINUTES } from '../../utils/settingsModel';
+import './MachineSchedule.scss';
 
 // Setări fixe. Programul și limita per rezervare vin din Firestore (vezi useSettings)
 const BLOCK_PAST_SLOTS = true;
@@ -28,209 +29,6 @@ const formatDuration = (minutes) => {
 };
 
 const Portal = ({ children }) => createPortal(children, document.body);
-
-// Toate culorile vin din theme.css (variabilele --cal-*)
-const STYLES = `
-.mc-root {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 85vh;
-  height: 85dvh;
-  padding: 16px;
-  overflow: hidden;
-  border-radius: 16px;
-  background: var(--cal-root-bg);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
-  color: var(--cal-text);
-  font-family: inherit;
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-.mc-root, .mc-root *, .mc-root *::before, .mc-root *::after,
-.mc-panel, .mc-panel *, .mc-modal, .mc-modal * { box-sizing: border-box; }
-
-@media (min-width: 1024px) {
-  .mc-root { max-width: 48rem; margin: 0 auto; }
-}
-
-/* Antet */
-.mc-top { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
-.mc-back {
-  display: flex; align-items: center; gap: 4px;
-  padding: 8px 12px; border: 0; border-radius: 12px;
-  background: var(--cal-btn-bg); color: var(--cal-text);
-  font: inherit; font-weight: 700; cursor: pointer;
-}
-.mc-back-label { display: none; }
-@media (min-width: 640px) { .mc-back-label { display: inline; } }
-.mc-title {
-  margin: 0 0 0 8px; min-width: 0;
-  font-size: 1.5rem; font-weight: 800; line-height: 1.2;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-
-/* Navigare între zile */
-.mc-daynav {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 8px; margin-bottom: 8px;
-  border: 1px solid var(--cal-nav-border); border-radius: 12px;
-  background: var(--cal-nav-bg);
-}
-.mc-daynav-btn {
-  display: flex; align-items: center; justify-content: center;
-  width: 40px; height: 40px; padding: 0; border: 0; border-radius: 8px;
-  background: transparent; color: var(--cal-nav-icon); cursor: pointer;
-}
-.mc-daynav-btn svg { width: 24px; height: 24px; }
-.mc-daynav-label { display: flex; flex-direction: column; align-items: center; }
-.mc-daynav-day { font-size: 0.875rem; font-weight: 700; text-transform: capitalize; }
-.mc-daynav-date { font-size: 0.75rem; color: var(--cal-muted); }
-.mc-today-wrap { height: 20px; margin-bottom: 8px; text-align: center; }
-.mc-today {
-  padding: 0; border: 0; background: transparent; color: var(--cal-link);
-  font: inherit; font-size: 0.75rem; font-weight: 600; cursor: pointer;
-}
-.mc-today:hover { text-decoration: underline; }
-
-/* Tabelul: ore în stânga, starea mașinii în dreapta */
-.mc-table {
-  flex: 1; min-height: 0;
-  display: flex; flex-direction: column;
-  overflow: hidden;
-  border: 1px solid var(--cal-table-border); border-radius: 12px;
-  background: var(--cal-table-bg);
-}
-.mc-head, .mc-row { display: grid; grid-template-columns: 8.25rem 1fr; }
-.mc-head {
-  flex: none;
-  background: var(--cal-head-bg); color: var(--cal-head-text);
-  font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em;
-}
-.mc-head > div { padding: 12px 16px; }
-.mc-head-machine { text-align: center; }
-.mc-body {
-  flex: 1; min-height: 0;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-}
-.mc-body--padded { padding-bottom: 15rem; }
-.mc-row { height: 48px; border-bottom: 1px solid var(--cal-row-border); }
-.mc-time {
-  display: flex; align-items: center;
-  padding: 0 16px;
-  font-size: 0.875rem; font-weight: 700; white-space: nowrap;
-}
-.mc-cell {
-  display: flex; align-items: center; justify-content: center;
-  width: 100%; height: 100%; margin: 0; padding: 0;
-  border: 0; border-left: 4px solid transparent; border-radius: 0;
-  font: inherit; font-size: 0.875rem; font-weight: 700;
-  cursor: pointer;
-  transition: background-color 0.15s;
-  -webkit-tap-highlight-color: transparent;
-}
-.mc-cell:disabled { cursor: not-allowed; opacity: 1; -webkit-text-fill-color: currentColor; }
-.mc-cell--free     { background: var(--cal-free-bg); color: var(--cal-free-text); border-left-color: var(--cal-free-edge); }
-.mc-cell--busy     { background: var(--cal-busy-bg); color: var(--cal-busy-text); border-left-color: var(--cal-busy-edge); }
-.mc-cell--mine     { background: var(--cal-mine-bg); color: var(--cal-mine-text); border-left-color: var(--cal-mine-edge); }
-.mc-cell--selected {
-  background: var(--cal-sel-bg); color: var(--cal-sel-text); border-left-color: var(--cal-sel-edge);
-  box-shadow: inset 0 0 0 2px var(--cal-sel-edge);
-}
-.mc-cell--past     { background: var(--cal-past-bg); color: var(--cal-past-text); border-left-color: var(--cal-past-edge); }
-@media (hover: hover) {
-  .mc-back:hover { background: var(--cal-btn-hover); }
-  .mc-daynav-btn:hover { background: var(--cal-btn-hover); color: var(--cal-nav-icon-hover); }
-  .mc-cell--free:hover { background: var(--cal-free-hover); }
-  .mc-cell--mine:hover { background: var(--cal-mine-hover); }
-}
-
-/* Panou flotant de confirmare */
-.mc-panel-wrap {
-  position: fixed; left: 0; right: 0;
-  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-  z-index: 40;
-  display: flex; justify-content: center;
-  padding: 0 16px;
-  pointer-events: none;
-}
-.mc-panel {
-  width: 100%; max-width: 28rem;
-  padding: 16px;
-  border: 1px solid var(--cal-panel-border); border-radius: 16px;
-  background: var(--cal-panel-bg);
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-  box-shadow: var(--cal-panel-shadow);
-  color: var(--cal-text); font-family: inherit;
-  pointer-events: auto;
-  animation: mc-slide-up 0.22s ease-out;
-}
-.mc-panel-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.mc-panel-sub { margin: 0; font-size: 0.875rem; color: var(--cal-muted); text-transform: capitalize; }
-.mc-panel-range { margin: 4px 0 0; font-size: 1.25rem; font-weight: 800; line-height: 1.3; }
-.mc-badge {
-  flex: none; padding: 4px 8px; border-radius: 8px;
-  background: var(--cal-badge-bg); color: var(--cal-badge-text);
-  font-size: 0.75rem; font-weight: 700; white-space: nowrap;
-}
-.mc-warn { margin: 0 0 12px; font-size: 0.75rem; font-weight: 600; color: var(--cal-warn); }
-.mc-actions { display: flex; gap: 12px; }
-.mc-btn {
-  padding: 12px; border-radius: 12px;
-  font: inherit; font-weight: 700; cursor: pointer;
-  transition: transform 0.1s, background-color 0.15s;
-}
-.mc-btn:active { transform: scale(0.98); }
-.mc-btn:disabled { opacity: 0.55; cursor: not-allowed; }
-.mc-btn--ghost { flex: 1; border: 2px solid var(--cal-ghost-border); background: transparent; color: var(--cal-ghost-text); }
-.mc-btn--primary { flex: 2; border: 0; background: var(--btn-bg); color: #fff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); }
-.mc-btn--primary:hover:not(:disabled) { background: var(--btn-hover); }
-.mc-btn--danger { width: 100%; border: 2px solid var(--cal-danger); background: transparent; color: var(--cal-danger); }
-
-/* Fereastra de anulare a rezervării proprii */
-.mc-overlay {
-  position: fixed; inset: 0; z-index: 50;
-  display: flex; align-items: center; justify-content: center;
-  padding: 16px;
-  background: var(--cal-overlay);
-  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
-}
-.mc-modal {
-  position: relative;
-  width: 100%; max-width: 24rem;
-  padding: 24px;
-  border: 1px solid var(--cal-modal-border); border-radius: 16px;
-  background: var(--cal-modal-bg);
-  box-shadow: var(--cal-panel-shadow);
-  color: var(--cal-text); font-family: inherit;
-  animation: mc-slide-up 0.22s ease-out;
-}
-.mc-modal-close {
-  position: absolute; top: 10px; right: 16px;
-  padding: 0; border: 0; background: transparent;
-  color: var(--cal-modal-close); font-size: 1.75rem; line-height: 1; cursor: pointer;
-}
-.mc-modal-title { margin: 0 0 4px; font-size: 1.25rem; font-weight: 800; }
-.mc-modal-sub { margin: 0 0 20px; font-size: 0.875rem; color: var(--cal-muted); text-transform: capitalize; }
-.mc-modal-time {
-  margin: 0 0 24px; padding: 16px;
-  border: 1px solid var(--cal-modal-time-border); border-radius: 12px;
-  background: var(--cal-modal-time-bg);
-  text-align: center; font-size: 1.875rem; font-weight: 700; color: var(--cal-modal-time-text);
-}
-.mc-modal-time span { margin: 0 4px; color: var(--cal-modal-time-sep); }
-
-@keyframes mc-slide-up {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: none; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .mc-root { transition: none; }
-  .mc-panel, .mc-modal { animation: none; }
-}
-`;
 
 const MachineCalendar = ({ machine, onBack }) => {
   const [events, setEvents] = useState([]);
@@ -382,8 +180,6 @@ const MachineCalendar = ({ machine, onBack }) => {
 
   return (
     <div className="mc-root">
-      <style>{STYLES}</style>
-
       {/* Antet */}
       <div className="mc-top">
         <button className="mc-back" onClick={onBack} aria-label="Înapoi">

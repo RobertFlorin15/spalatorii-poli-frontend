@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useAuth } from './auth/AuthContext';
-import { settingsApi } from './data';
-import { userMessage } from './data/errors';
-import { logError } from './utils/logger';
-import { useSettings } from './useSettings';
+import { useAuth } from '../../context/AuthContext';
+import { settingsApi } from '../../api';
+import { userMessage } from '../../api/errors';
+import { logError } from '../../utils/logger';
+import { useSettings } from '../../hooks/useSettings';
 import {
   validateSettings, SLOT_MINUTES, DEFAULT_SETTINGS, formatClock, formatDuration,
-} from './settingsModel';
+} from '../../utils/settingsModel';
+import './AdminPanel.scss';
 
 // Opțiunile din liste: din 30 în 30 de minute
 const OPEN_OPTIONS = Array.from({ length: (24 * 60) / SLOT_MINUTES }, (_, i) => i * SLOT_MINUTES);

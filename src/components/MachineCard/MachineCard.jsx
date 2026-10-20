@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { bookingsApi } from './data';
-import { logError } from './utils/logger';
-import MachineIcon from './MachineIcon';
+import { bookingsApi } from '../../api';
+import { logError } from '../../utils/logger';
+import MachineIcon from '../MachineIcon/MachineIcon';
 
 const MachineCard = ({ machine, onSelect }) => {
   const [isAvailable, setIsAvailable] = useState(true);

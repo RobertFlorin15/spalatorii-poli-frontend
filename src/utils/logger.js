@@ -1,4 +1,4 @@
-import { IS_DEV } from '../config';
+import { IS_DEV } from './config';
 
 export function logError(context, error) {
   if (IS_DEV) {

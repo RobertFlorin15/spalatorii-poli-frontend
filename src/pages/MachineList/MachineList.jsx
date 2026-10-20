@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { machinesApi } from './data';
-import { logError } from './utils/logger';
-import MachineCard from './MachineCard';
+import { machinesApi } from '../../api';
+import { logError } from '../../utils/logger';
+import MachineCard from '../../components/MachineCard/MachineCard';
+import './MachineList.scss';
 
 /**
  * Slider orizontal cu indicator de poziție (cercuri, ca la Instagram).

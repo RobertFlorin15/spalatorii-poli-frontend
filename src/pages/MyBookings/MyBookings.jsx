@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { machinesApi, bookingsApi } from './data';
-import { userMessage } from './data/errors';
-import { logError } from './utils/logger';
+import { machinesApi, bookingsApi } from '../../api';
+import { userMessage } from '../../api/errors';
+import { logError } from '../../utils/logger';
 import { format, isSameDay, addDays, differenceInMinutes } from 'date-fns';
 import ro from 'date-fns/locale/ro';
-import MachineIcon from './MachineIcon';
-import SegmentedTabs from './SegmentedTabs';
+import MachineIcon from '../../components/MachineIcon/MachineIcon';
+import SegmentedTabs from '../../components/SegmentedTabs/SegmentedTabs';
+import './MyBookings.scss';
 
 const formatDuration = (minutes) => {
   const h = Math.floor(minutes / 60);

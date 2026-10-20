@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { settingsApi } from './data';
-import { DEFAULT_SETTINGS, validateSettings } from './settingsModel';
-import { logError } from './utils/logger';
+import { settingsApi } from '../api';
+import { DEFAULT_SETTINGS, validateSettings } from '../utils/settingsModel';
+import { logError } from '../utils/logger';
 
 /**
  * Citește setările (program + limită per rezervare).

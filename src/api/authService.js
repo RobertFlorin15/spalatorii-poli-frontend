@@ -1,4 +1,4 @@
-import { DEV_MOCK_USER } from '../config';
+import { DEV_MOCK_USER } from '../utils/config';
 
 const KNOWN_ROLES = ['USER', 'ADMIN'];
 

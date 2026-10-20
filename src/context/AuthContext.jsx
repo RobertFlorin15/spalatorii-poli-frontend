@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { getSession, logout as logoutRequest } from './authService';
-import { setSessionUser } from '../data/session';
+import { getSession, logout as logoutRequest } from '../api/authService';
+import { setSessionUser } from '../api/session';
 import { logError } from '../utils/logger';
 
 const AuthContext = createContext(null);
