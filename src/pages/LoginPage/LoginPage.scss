@@ -1,1 +1,42 @@
-// Stiluri specifice paginii LoginPage
+.login-page {
+  min-height: 100vh;
+  background-color: var(--app-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  font-family: inherit;
+  transition: background-color 0.3s ease, color 0.3s ease;
+
+  &__card {
+    width: 100%;
+    max-width: 24rem;
+    background-color: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  }
+
+  &__title {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    font-weight: 800;
+    color: var(--card-title);
+    margin: 0 0 0.5rem;
+  }
+
+  &__subtitle {
+    color: var(--card-muted);
+    margin: 0;
+  }
+
+  &__error {
+    margin: 1rem 0 0;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 700;
+    color: var(--cal-danger);
+  }
+}

@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { FiSliders } from 'react-icons/fi';
 import './theme.css';
+import './App.scss';
 import { useTheme } from './hooks/useTheme';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ThemeToggle from './components/ThemeToggle/ThemeToggle';
@@ -34,13 +36,6 @@ const SCENES = {
     'translate(60%, 40%) scale(0.9)',
   ],
 };
-
-
-const SlidersIcon = () => (
-  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
-  </svg>
-);
 
 function AppShell({ theme, toggleTheme }) {
   const [view, setView] = useState('machines'); // 'machines' | 'bookings' | 'admin'
@@ -79,7 +74,7 @@ function AppShell({ theme, toggleTheme }) {
   };
 
   return (
-    <div className="theme-fade min-h-screen bg-[color:var(--app-bg)] relative overflow-hidden font-sans text-[color:var(--on-bg)]">
+    <div className="app-shell">
       {/* Cercurile sunt fixe față de ecran (nu depind de înălțimea conținutului)
           și se mută animat când se schimbă pagina */}
       <div
@@ -98,42 +93,37 @@ function AppShell({ theme, toggleTheme }) {
         style={{ transform: t3 }}
       ></div>
 
-      <div className="relative z-10 w-full max-w-md lg:max-w-5xl mx-auto min-h-screen p-4 lg:px-8 flex flex-col">
-        <header className="relative text-center pt-8 pb-4">
-          <h1
-            className="text-3xl font-extrabold text-[color:var(--on-bg)] cursor-pointer drop-shadow-md tracking-wide"
-            onClick={goToMachines}
-          >
+      <div className="app-shell__container">
+        <header className="app-shell__header">
+          <h1 className="app-shell__brand" onClick={goToMachines}>
             Spălătorie
           </h1>
 
           {/* Butonul de admin: apare doar pentru administratori */}
           {isAdmin && (
-            <div className="absolute top-6 left-0">
+            <div className="app-shell__header-left">
               <button
                 type="button"
                 onClick={goToAdmin}
                 aria-label="Panou administrator"
                 title="Panou administrator"
                 aria-pressed={activeView === 'admin'}
-                className={`w-11 h-11 rounded-full flex items-center justify-center active:scale-95 transition ${
-                  activeView === 'admin'
-                    ? 'bg-[color:var(--tab-active-bg)] text-[color:var(--tab-active-text)] shadow-md'
-                    : 'bg-[color:var(--toggle-bg)] text-[color:var(--toggle-icon)] hover:bg-[color:var(--toggle-hover)]'
+                className={`app-shell__admin-btn ${
+                  activeView === 'admin' ? 'app-shell__admin-btn--active' : ''
                 }`}
               >
-                <SlidersIcon />
+                <FiSliders size={22} aria-hidden="true" />
               </button>
             </div>
           )}
 
-          <div className="absolute top-6 right-0">
+          <div className="app-shell__header-right">
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
           </div>
         </header>
 
         {/* Navigare între pagini */}
-        <nav className="mb-6 w-full lg:max-w-md lg:mx-auto" aria-label="Navigare principală">
+        <nav className="app-shell__nav" aria-label="Navigare principală">
           <SegmentedTabs
             label="Pagini"
             value={activeView}
@@ -145,8 +135,8 @@ function AppShell({ theme, toggleTheme }) {
           />
         </nav>
 
-        <main className="flex-1 flex flex-col w-full pb-8">
-          <div key={`${activeView}-${selectedMachine?.id ?? 'list'}`} className="view-enter flex flex-1 flex-col w-full">
+        <main className="app-shell__main">
+          <div key={`${activeView}-${selectedMachine?.id ?? 'list'}`} className="view-enter app-shell__view">
             {activeView === 'admin' ? (
               <AdminPanel />
             ) : activeView === 'bookings' ? (
@@ -176,7 +166,7 @@ function Gate({ theme, toggleTheme }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[color:var(--app-bg)] flex items-center justify-center text-[color:var(--on-bg)] font-bold">
+      <div className="app-gate-loading">
         se incarca.
       </div>
     );

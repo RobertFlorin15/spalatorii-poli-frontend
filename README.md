@@ -1,30 +1,30 @@
-# Spălătorie — Frontend
+# Laundry — Frontend
 
-Aplicație web pentru programarea mașinilor de spălat și uscătoarelor din cămin.
+Web application for scheduling washing machines and dryers in student dorms.
 
-## Funcționalități
+## Features
 
-- **Lista utilajelor**: vizualizare rapidă a mașinilor de spălat și a uscătoarelor disponibile, cu filtrare și stare în timp real.
-- **Programare pe intervale**: tabel interactiv pe intervale de 30 de minute pentru selectarea și rezervarea unui interval.
-- **Rezervările mele**: vizualizarea rezervărilor active și a istoricului, cu posibilitatea de anulare sau scurtare a unei rezervări în curs.
-- **Panou Administrator**: adăugare/ștergere utilaje, activare/dezactivare și configurarea programului de funcționare și a duratei maxime per rezervare.
-- **Temă Light / Dark**: suport complet pentru mod luminos și întunecat.
+- **Equipment List**: quick overview of available washing machines and dryers, with filtering and real-time status.
+- **Time-Slot Scheduling**: interactive 30-minute time-slot table for selecting and reserving slots.
+- **My Bookings**: view active bookings and history, with options to cancel or shorten an ongoing reservation.
+- **Admin Panel**: add/delete equipment, enable/disable machines, and configure operating hours as well as maximum booking duration.
+- **Light / Dark Theme**: full support for light and dark modes.
 
-## Tehnologii
+## Tech Stack
 
 - React 19 + Vite
 - Tailwind CSS v4
 - Firebase Firestore
 - `date-fns`
 
-## Rulare locală
+## Local Setup
 
-1. Instalează dependențele:
+1. Install dependencies:
    ```bash
    npm install
    ```
 
-2. Configurează variabilele de mediu într-un fișier `.env` (dacă folosești provider-ul Firestore):
+2. Configure environment variables in a `.env` file (if using the Firestore provider):
    ```env
    VITE_FIREBASE_API_KEY=...
    VITE_FIREBASE_AUTH_DOMAIN=...
@@ -34,7 +34,7 @@ Aplicație web pentru programarea mașinilor de spălat și uscătoarelor din c�
    VITE_FIREBASE_APP_ID=...
    ```
 
-3. Pornește serverul de dezvoltare:
+3. Start the development server:
    ```bash
    npm run dev
    ```

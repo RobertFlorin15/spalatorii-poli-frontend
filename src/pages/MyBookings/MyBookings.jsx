@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { machinesApi, bookingsApi } from '../../api';
 import { userMessage } from '../../api/errors';
@@ -56,46 +56,43 @@ const UsageChart = ({ rows }) => {
   const hasDryers = rows.some((r) => r.type === 'dryer');
 
   return (
-    <div className="theme-fade bg-[color:var(--card-bg)] border border-[color:var(--card-border)] rounded-2xl p-4 shadow-lg">
-      <div className="flex items-baseline justify-between mb-4">
-        <h3 className="font-bold text-[color:var(--card-title)]">Ore folosite per mașină</h3>
+    <div className="my-bookings__chart">
+      <div className="my-bookings__chart-header">
+        <h3 className="my-bookings__chart-title">Ore folosite per mașină</h3>
 
         {hasWashers && hasDryers && (
-          <div className="flex gap-3 text-xs text-[color:var(--card-muted)]">
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-[color:var(--chart-washer)]" /> Spălat
+          <div className="my-bookings__chart-legend">
+            <span className="my-bookings__chart-legend-item">
+              <span className="my-bookings__chart-dot my-bookings__chart-dot--washer" /> Spălat
             </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-[color:var(--chart-dryer)]" /> Uscat
+            <span className="my-bookings__chart-legend-item">
+              <span className="my-bookings__chart-dot my-bookings__chart-dot--dryer" /> Uscat
             </span>
           </div>
         )}
       </div>
 
-      <ul className="flex flex-col gap-4">
+      <ul className="my-bookings__chart-list">
         {rows.map((row) => {
           const pct = (row.minutes / maxMinutes) * 100;
           const width = row.minutes > 0 ? Math.max(pct, 4) : 0;
 
           return (
             <li key={row.id}>
-              <div className="flex items-baseline justify-between gap-3 mb-1.5">
-                <span className="min-w-0 truncate text-sm font-bold text-[color:var(--card-title)]">
-                  <MachineIcon type={row.type} size={18} className="inline-block align-[-4px] mr-1.5" />
+              <div className="my-bookings__chart-row-head">
+                <span className="my-bookings__chart-row-name">
+                  <MachineIcon type={row.type} size={18} className="my-bookings__chart-row-icon" />
                   {row.name}
                 </span>
-                <span className="shrink-0 text-sm font-bold text-[color:var(--card-title)]">
+                <span className="my-bookings__chart-row-val">
                   {row.minutes > 0 ? formatDuration(row.minutes) : '0h'}
                 </span>
               </div>
 
-              <div
-                className="h-3 w-full rounded-full bg-[color:var(--card-icon-bg)] overflow-hidden"
-                aria-hidden="true"
-              >
+              <div className="my-bookings__chart-track" aria-hidden="true">
                 <div
-                  className={`h-full rounded-full transition-[width] duration-700 ease-out motion-reduce:transition-none ${
-                    row.type === 'dryer' ? 'bg-[color:var(--chart-dryer)]' : 'bg-[color:var(--chart-washer)]'
+                  className={`my-bookings__chart-bar ${
+                    row.type === 'dryer' ? 'my-bookings__chart-bar--dryer' : 'my-bookings__chart-bar--washer'
                   }`}
                   style={{ width: mounted ? `${width}%` : '0%' }}
                 />
@@ -109,9 +106,9 @@ const UsageChart = ({ rows }) => {
 };
 
 const StatTile = ({ label, value }) => (
-  <div className="theme-fade bg-[color:var(--card-bg)] border border-[color:var(--card-border)] rounded-2xl p-4 shadow-lg">
-    <p className="text-xs text-[color:var(--card-muted)] mb-1">{label}</p>
-    <p className="text-xl font-extrabold text-[color:var(--card-title)] leading-tight">{value}</p>
+  <div className="my-bookings__stat-tile">
+    <p className="my-bookings__stat-label">{label}</p>
+    <p className="my-bookings__stat-value">{value}</p>
   </div>
 );
 
@@ -224,7 +221,7 @@ const MyBookings = ({ onGoToMachines }) => {
   };
 
   if (loading) {
-    return <div className="text-center text-[color:var(--on-bg)] mt-10 font-bold">se incarca.</div>;
+    return <div className="my-bookings__loading">se incarca.</div>;
   }
 
   const renderCard = (b) => {
@@ -234,27 +231,24 @@ const MyBookings = ({ onGoToMachines }) => {
     const minutesLeft = differenceInMinutes(b.end, now);
 
     let status = null;
-    if (inProgress) status = { text: `În desfășurare · încă ${formatDuration(Math.max(minutesLeft, 1))}`, color: 'var(--ok)' };
-    else if (minutesToStart < 24 * 60) status = { text: `Începe în ${formatDuration(Math.max(minutesToStart, 1))}`, color: 'var(--timer)' };
+    if (inProgress) status = { text: `În desfășurare · încă ${formatDuration(Math.max(minutesLeft, 1))}`, mod: 'active' };
+    else if (minutesToStart < 24 * 60) status = { text: `Începe în ${formatDuration(Math.max(minutesToStart, 1))}`, mod: 'soon' };
 
     const kind = inProgress ? 'release' : 'cancel';
 
     return (
-      <li
-        key={b.id}
-        className="theme-fade bg-[color:var(--card-bg)] border border-[color:var(--card-border)] rounded-2xl p-4 shadow-lg"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 shrink-0 rounded-full bg-[color:var(--card-icon-bg)] flex items-center justify-center text-[color:var(--card-title)] shadow-inner">
+      <li key={b.id} className="my-bookings__card">
+        <div className="my-bookings__card-top">
+          <div className="my-bookings__card-icon">
             <MachineIcon type={machine?.type} size={26} />
           </div>
 
-          <div className="min-w-0 flex-1">
-            <h3 className="font-bold text-[color:var(--card-title)] truncate">
+          <div className="my-bookings__card-info">
+            <h3 className="my-bookings__card-name">
               {machine?.name ?? 'Mașină ștearsă'}
             </h3>
-            <p className="text-sm text-[color:var(--card-muted)]">
-              <span className="font-bold">
+            <p className="my-bookings__card-time">
+              <span className="my-bookings__card-hours">
                 {format(b.start, 'HH:mm')} - {format(b.end, 'HH:mm')}
               </span>
               <span> · {formatDuration(differenceInMinutes(b.end, b.start))}</span>
@@ -263,7 +257,7 @@ const MyBookings = ({ onGoToMachines }) => {
         </div>
 
         {status && (
-          <p className="mt-3 text-xs font-bold" style={{ color: status.color }}>
+          <p className={`my-bookings__card-status my-bookings__card-status--${status.mod}`}>
             {status.text}
           </p>
         )}
@@ -271,11 +265,7 @@ const MyBookings = ({ onGoToMachines }) => {
         <button
           type="button"
           onClick={() => { setActionError(null); setPending({ booking: b, kind }); }}
-          className={`mt-3 w-full py-2.5 rounded-xl text-sm font-bold border-2 transition active:scale-[0.98] ${
-            kind === 'release'
-              ? 'border-[color:var(--btn-bg)] text-[color:var(--card-title)]'
-              : 'border-[color:var(--cal-danger)] text-[color:var(--cal-danger)]'
-          }`}
+          className={`my-bookings__card-btn my-bookings__card-btn--${kind}`}
         >
           {kind === 'release' ? 'Eliberează mașina' : 'Anulează rezervarea'}
         </button>
@@ -284,12 +274,12 @@ const MyBookings = ({ onGoToMachines }) => {
   };
 
   const emptyState = (text) => (
-    <div className="theme-fade bg-[color:var(--card-bg)] border border-[color:var(--card-border)] rounded-2xl p-6 text-center shadow-lg">
-      <p className="text-[color:var(--card-muted)] mb-4">{text}</p>
+    <div className="my-bookings__empty">
+      <p className="my-bookings__empty-text">{text}</p>
       <button
         type="button"
         onClick={onGoToMachines}
-        className="px-5 py-3 rounded-xl font-bold text-white bg-[color:var(--btn-bg)] hover:bg-[color:var(--btn-hover)] active:bg-[color:var(--btn-active)] transition-colors"
+        className="my-bookings__empty-btn"
       >
         Rezervă o mașină
       </button>
@@ -299,8 +289,8 @@ const MyBookings = ({ onGoToMachines }) => {
   const copy = pending ? CONFIRM_COPY[pending.kind] : null;
 
   return (
-    <div className="w-full flex flex-col gap-4 lg:max-w-3xl lg:mx-auto">
-      <h2 className="text-xl font-bold text-[color:var(--on-bg)] drop-shadow-sm px-2">
+    <div className="my-bookings">
+      <h2 className="my-bookings__title">
         Rezervările mele
       </h2>
 
@@ -321,11 +311,11 @@ const MyBookings = ({ onGoToMachines }) => {
         ) : (
           upcomingByDay.map((group) => (
             <section key={group.date.toDateString()}>
-              <h3 className="text-sm font-bold text-[color:var(--on-bg-muted)] capitalize px-2 mb-2">
+              <h3 className="my-bookings__day-heading">
                 {dayLabel(group.date, now)}
-                <span className="font-normal"> · {format(group.date, 'dd MMM', { locale: ro })}</span>
+                <span className="my-bookings__day-date"> · {format(group.date, 'dd MMM', { locale: ro })}</span>
               </h3>
-              <ul className="flex flex-col gap-3 lg:grid lg:grid-cols-2">{group.items.map(renderCard)}</ul>
+              <ul className="my-bookings__list">{group.items.map(renderCard)}</ul>
             </section>
           ))
         )
@@ -337,7 +327,7 @@ const MyBookings = ({ onGoToMachines }) => {
           emptyState('Statisticile apar după prima ta utilizare a unei mașini.')
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="my-bookings__stats-grid">
               <StatTile label="Timp total folosit" value={formatDuration(stats.totalMinutes)} />
               <StatTile label="Rezervări folosite" value={stats.sessions} />
             </div>
@@ -345,8 +335,8 @@ const MyBookings = ({ onGoToMachines }) => {
             <UsageChart rows={stats.rows} />
 
             {stats.top && (
-              <p className="text-center text-sm text-[color:var(--on-bg-muted)] px-2">
-                Cea mai folosită: <span className="font-bold text-[color:var(--on-bg)]">{stats.top.name}</span>
+              <p className="my-bookings__top-machine">
+                Cea mai folosită: <span className="my-bookings__top-machine-name">{stats.top.name}</span>
               </p>
             )}
           </>
@@ -356,35 +346,35 @@ const MyBookings = ({ onGoToMachines }) => {
       {/* Fereastra de confirmare */}
       {pending && copy && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[color:var(--cal-overlay)] backdrop-blur-sm"
+          className="my-bookings__overlay"
           onClick={() => !busy && setPending(null)}
         >
           <div
             role="dialog"
             aria-modal="true"
-            className="w-full max-w-sm rounded-2xl p-6 bg-[color:var(--card-bg)] border border-[color:var(--card-border)] shadow-2xl text-[color:var(--card-title)]"
+            className="my-bookings__modal"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-xl font-extrabold mb-1">{copy.title}</h3>
-            <p className="text-sm text-[color:var(--card-muted)] mb-1">{copy.text}</p>
-            <p className="text-sm font-bold mb-5">
+            <h3 className="my-bookings__modal-title">{copy.title}</h3>
+            <p className="my-bookings__modal-text">{copy.text}</p>
+            <p className="my-bookings__modal-meta">
               {machines[pending.booking.machineId]?.name ?? 'Mașină ștearsă'}
               {' · '}
               {format(pending.booking.start, 'dd MMM', { locale: ro })}, {format(pending.booking.start, 'HH:mm')} - {format(pending.booking.end, 'HH:mm')}
             </p>
 
             {actionError && (
-              <p role="alert" className="text-sm font-bold text-[color:var(--cal-danger)] mb-3">
+              <p role="alert" className="my-bookings__modal-error">
                 {actionError}
               </p>
             )}
 
-            <div className="flex gap-3">
+            <div className="my-bookings__modal-actions">
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => setPending(null)}
-                className="flex-1 py-3 rounded-xl font-bold border-2 border-[color:var(--cal-ghost-border)] text-[color:var(--cal-ghost-text)] disabled:opacity-50"
+                className="my-bookings__modal-btn my-bookings__modal-btn--ghost"
               >
                 {copy.cancel}
               </button>
@@ -392,8 +382,8 @@ const MyBookings = ({ onGoToMachines }) => {
                 type="button"
                 disabled={busy}
                 onClick={runAction}
-                className={`flex-1 py-3 rounded-xl font-bold text-white disabled:opacity-50 ${
-                  copy.danger ? 'bg-[color:var(--cal-danger)]' : 'bg-[color:var(--btn-bg)]'
+                className={`my-bookings__modal-btn ${
+                  copy.danger ? 'my-bookings__modal-btn--danger' : 'my-bookings__modal-btn--primary'
                 }`}
               >
                 {busy ? 'Se salvează...' : copy.confirm}

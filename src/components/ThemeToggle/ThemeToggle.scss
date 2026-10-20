@@ -1,0 +1,21 @@
+.theme-toggle {
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 0;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--toggle-bg);
+  color: var(--toggle-icon);
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+
+  &:hover {
+    background-color: var(--toggle-hover);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}

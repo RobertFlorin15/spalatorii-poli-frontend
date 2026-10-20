@@ -8,6 +8,8 @@ export const DEFAULT_SETTINGS = {
   openMinutes: 8 * 60,   // 08:00
   closeMinutes: 21 * 60, // 21:00
   maxSlots: 4,           // 4 x 30 min = 2h
+  blockPastSlots: true,
+  maxAdvanceDays: 7,
 };
 
 export const formatClock = (minutes) => {
@@ -24,7 +26,7 @@ export const formatDuration = (minutes) => {
 
 /** Returnează un mesaj de eroare, sau null dacă setările sunt valide. */
 export const validateSettings = (settings) => {
-  const { openMinutes, closeMinutes, maxSlots } = settings ?? {};
+  const { openMinutes, closeMinutes, maxSlots, blockPastSlots, maxAdvanceDays } = settings ?? {};
   const isStep = (n) => Number.isInteger(n) && n % SLOT_MINUTES === 0;
 
   if (!isStep(openMinutes) || openMinutes < 0 || openMinutes > 24 * 60 - SLOT_MINUTES) {
@@ -44,5 +46,14 @@ export const validateSettings = (settings) => {
   if (maxSlots > totalSlots) {
     return 'Limita depășește numărul de intervale dintr-o zi.';
   }
+
+  if (blockPastSlots !== undefined && typeof blockPastSlots !== 'boolean') {
+    return 'Setarea pentru blocarea orelor trecute nu este validă.';
+  }
+
+  if (maxAdvanceDays !== undefined && (!Number.isInteger(maxAdvanceDays) || maxAdvanceDays < 1 || maxAdvanceDays > 90)) {
+    return 'Numărul de zile în avans trebuie să fie între 1 și 90.';
+  }
+
   return null;
 };

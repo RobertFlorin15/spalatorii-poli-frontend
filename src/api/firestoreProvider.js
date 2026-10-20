@@ -5,7 +5,7 @@ import {
 import { db } from './firebase';
 import { getSessionUserId } from './session';
 import { ApiError } from './errors';
-import { validateSettings } from '../utils/settingsModel';
+import { validateSettings, DEFAULT_SETTINGS } from '../utils/settingsModel';
 
 /**
  * Provider de date bazat pe Cloud Firestore.
@@ -48,11 +48,22 @@ export const machinesApi = {
               id: d.id,
               name: String(data.name ?? ''),
               type: data.type === 'washer' || data.type === 'dryer' ? data.type : null,
+              enabled: data.enabled !== false,
             };
           })
         ),
       onError
     );
+  },
+
+  async setEnabled(machineId, enabled) {
+    const uid = requireUser();
+    if (!machineId || typeof enabled !== 'boolean') throw invalid();
+    await updateDoc(doc(db, 'machines', String(machineId)), {
+      enabled,
+      updatedAt: serverTimestamp(),
+      updatedBy: uid,
+    });
   },
 };
 
@@ -116,6 +127,8 @@ export const settingsApi = {
           openMinutes: data.openMinutes,
           closeMinutes: data.closeMinutes,
           maxSlots: data.maxSlots,
+          blockPastSlots: data.blockPastSlots,
+          maxAdvanceDays: data.maxAdvanceDays,
         });
       },
       onError
@@ -125,18 +138,22 @@ export const settingsApi = {
   // Verificarea rolului ADMIN nu se poate face aici: trebuie făcută de server / reguli -> tot claude zice asta
   async update(settings) {
     const uid = requireUser();
-    if (validateSettings(settings)) throw new ApiError(422, 'INVALID_SETTINGS');
+    const merged = {
+      ...DEFAULT_SETTINGS,
+      ...settings,
+    };
+    if (validateSettings(merged)) throw new ApiError(422, 'INVALID_SETTINGS');
 
-    await setDoc(
-      doc(db, 'settings', 'booking'),
-      {
-        openMinutes: settings.openMinutes,
-        closeMinutes: settings.closeMinutes,
-        maxSlots: settings.maxSlots,
-        updatedAt: serverTimestamp(),
-        updatedBy: uid,
-      },
-      { merge: true }
-    );
+    const payload = {
+      updatedAt: serverTimestamp(),
+      updatedBy: uid,
+    };
+    if (settings.openMinutes !== undefined) payload.openMinutes = settings.openMinutes;
+    if (settings.closeMinutes !== undefined) payload.closeMinutes = settings.closeMinutes;
+    if (settings.maxSlots !== undefined) payload.maxSlots = settings.maxSlots;
+    if (settings.blockPastSlots !== undefined) payload.blockPastSlots = settings.blockPastSlots;
+    if (settings.maxAdvanceDays !== undefined) payload.maxAdvanceDays = settings.maxAdvanceDays;
+
+    await setDoc(doc(db, 'settings', 'booking'), payload, { merge: true });
   },
 };

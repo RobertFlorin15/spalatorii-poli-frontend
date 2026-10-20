@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { format, addDays, subDays, isSameDay } from 'date-fns';
+import { FiArrowLeft, FiChevronLeft, FiChevronRight, FiX } from 'react-icons/fi';
+import { format, addDays, subDays, isSameDay, differenceInCalendarDays } from 'date-fns';
 import ro from 'date-fns/locale/ro';
 import { bookingsApi } from '../../api';
 import { userMessage } from '../../api/errors';
@@ -10,8 +11,6 @@ import { useSettings } from '../../hooks/useSettings';
 import { SLOT_MINUTES } from '../../utils/settingsModel';
 import './MachineSchedule.scss';
 
-// Setări fixe. Programul și limita per rezervare vin din Firestore (vezi useSettings)
-const BLOCK_PAST_SLOTS = true;
 const ROW_HEIGHT = 48;
 
 const CELL_LABELS = {
@@ -42,8 +41,13 @@ const MachineCalendar = ({ machine, onBack }) => {
   const bodyRef = useRef(null);
 
   // Setările setate de administrator (se actualizează în timp real)
-  const { openMinutes, closeMinutes, maxSlots: MAX_SLOTS } = useSettings();
-
+  const {
+    openMinutes,
+    closeMinutes,
+    maxSlots: MAX_SLOTS,
+    blockPastSlots,
+    maxAdvanceDays,
+  } = useSettings();
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60 * 1000);
@@ -81,10 +85,10 @@ const MachineCalendar = ({ machine, onBack }) => {
       if (event) {
         return { status: event.mine ? 'mine' : 'busy', event };
       }
-      if (BLOCK_PAST_SLOTS && slot.end <= now) return { status: 'past' };
+      if (blockPastSlots && slot.end <= now) return { status: 'past' };
       return { status: 'free' };
     });
-  }, [slots, events, now]);
+  }, [slots, events, now, blockPastSlots]);
 
   const selectedSlots = useMemo(
     () => slots
@@ -109,6 +113,8 @@ const MachineCalendar = ({ machine, onBack }) => {
   const totalMinutes = selectedSlots.length * SLOT_MINUTES;
   const limitReached = selectedSlots.length >= MAX_SLOTS;
   const isToday = isSameDay(currentDate, now);
+  const daysAhead = differenceInCalendarDays(currentDate, now);
+  const canGoNext = daysAhead < maxAdvanceDays;
   const dayKey = format(currentDate, 'yyyy-MM-dd');
 
   useEffect(() => {
@@ -175,7 +181,10 @@ const MachineCalendar = ({ machine, onBack }) => {
     setSelectedKeys([]);
   };
   const goToPrevDay = () => changeDay(subDays(currentDate, 1));
-  const goToNextDay = () => changeDay(addDays(currentDate, 1));
+  const goToNextDay = () => {
+    if (!canGoNext) return;
+    changeDay(addDays(currentDate, 1));
+  };
   const goToToday = () => changeDay(new Date());
 
   return (
@@ -183,9 +192,7 @@ const MachineCalendar = ({ machine, onBack }) => {
       {/* Antet */}
       <div className="mc-top">
         <button className="mc-back" onClick={onBack} aria-label="Înapoi">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
+          <FiArrowLeft size={18} aria-hidden="true" />
           <span className="mc-back-label">Înapoi</span>
         </button>
         <h2 className="mc-title">
@@ -193,7 +200,7 @@ const MachineCalendar = ({ machine, onBack }) => {
           <MachineIcon
             type={machine.type}
             size={24}
-            style={{ display: 'inline-block', verticalAlign: '-4px', marginLeft: 10, opacity: 0.85 }}
+            className="mc-title-icon"
           />
         </h2>
       </div>
@@ -201,7 +208,7 @@ const MachineCalendar = ({ machine, onBack }) => {
       {/* Navigare prin zile */}
       <div className="mc-daynav">
         <button className="mc-daynav-btn" onClick={goToPrevDay} aria-label="Ziua anterioară">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
+          <FiChevronLeft size={24} aria-hidden="true" />
         </button>
 
         <div className="mc-daynav-label">
@@ -209,8 +216,14 @@ const MachineCalendar = ({ machine, onBack }) => {
           <span className="mc-daynav-date">{format(currentDate, 'dd MMMM', { locale: ro })}</span>
         </div>
 
-        <button className="mc-daynav-btn" onClick={goToNextDay} aria-label="Ziua următoare">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
+        <button
+          className="mc-daynav-btn"
+          onClick={goToNextDay}
+          disabled={!canGoNext}
+          aria-label="Ziua următoare"
+          title={!canGoNext ? `Poți programa cu cel mult ${maxAdvanceDays} zile în avans` : undefined}
+        >
+          <FiChevronRight size={24} aria-hidden="true" />
         </button>
       </div>
 
@@ -305,7 +318,9 @@ const MachineCalendar = ({ machine, onBack }) => {
         <Portal>
           <div className="mc-overlay">
             <div className="mc-modal">
-              <button className="mc-modal-close" onClick={() => setShowDeleteModal(false)} aria-label="Închide">×</button>
+              <button className="mc-modal-close" onClick={() => setShowDeleteModal(false)} aria-label="Închide">
+                <FiX size={24} aria-hidden="true" />
+              </button>
               <h3 className="mc-modal-title">Rezervarea ta</h3>
               <p className="mc-modal-sub">{format(selectedEvent.start, 'EEEE, dd MMM', { locale: ro })}</p>
               <p className="mc-modal-time">

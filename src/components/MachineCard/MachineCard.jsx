@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { bookingsApi } from '../../api';
 import { logError } from '../../utils/logger';
 import MachineIcon from '../MachineIcon/MachineIcon';
+import './MachineCard.scss';
 
 const MachineCard = ({ machine, onSelect }) => {
   const [isAvailable, setIsAvailable] = useState(true);
   const [timeRemaining, setTimeRemaining] = useState(0);
+
+  const isDisabled = machine.enabled === false;
 
   useEffect(() => {
     if (!machine?.id) return;
@@ -45,37 +48,47 @@ const MachineCard = ({ machine, onSelect }) => {
     };
   }, [machine.id]);
 
+  const statusMod = isDisabled
+    ? 'machine-card__status-value--disabled'
+    : isAvailable
+      ? 'machine-card__status-value--available'
+      : 'machine-card__status-value--busy';
+
+  const statusText = isDisabled
+    ? 'Indisponibil (În mentenanță)'
+    : isAvailable
+      ? 'Disponibil'
+      : 'În utilizare';
+
   return (
-    <div className="theme-fade bg-[color:var(--card-bg)] border border-[color:var(--card-border)] p-6 rounded-2xl shadow-xl w-full flex flex-col items-center text-center transition-transform active:scale-[0.98]">
-      <div className="w-16 h-16 bg-[color:var(--card-icon-bg)] rounded-full flex items-center justify-center mb-3 shadow-inner text-[color:var(--card-title)]">
+    <div className={`machine-card ${isDisabled ? 'machine-card--disabled' : ''}`}>
+      <div className="machine-card__icon">
         <MachineIcon type={machine.type} size={34} />
       </div>
 
-      <h3 className="font-bold text-xl text-[color:var(--card-title)] mb-1">{machine.name}</h3>
+      <h3 className="machine-card__title">{machine.name}</h3>
 
-      <p className="text-sm text-[color:var(--card-muted)] mb-5">
+      <p className="machine-card__status">
         Status:{' '}
-        <span
-          className={`font-bold ml-1 ${
-            isAvailable ? 'text-[color:var(--ok)]' : 'text-[color:var(--busy-text)]'
-          }`}
-        >
-          {isAvailable ? 'Disponibil' : 'În utilizare'}
+        <span className={`machine-card__status-value ${statusMod}`}>
+          {statusText}
         </span>
       </p>
 
-      {!isAvailable && (
-        <div className="w-full border border-[color:var(--card-inner-border)] bg-[color:var(--card-inner-bg)] rounded-lg py-2 mb-4 animate-fade-in">
-          <p className="text-xs text-[color:var(--card-muted)] mb-1">Timp estimat rămas</p>
-          <p className="font-bold text-[color:var(--timer)]">{timeRemaining} minute</p>
+      {!isDisabled && !isAvailable && (
+        <div className="machine-card__timer">
+          <p className="machine-card__timer-label">Timp estimat rămas</p>
+          <p className="machine-card__timer-value">{timeRemaining} minute</p>
         </div>
       )}
 
       <button
-        onClick={onSelect}
-        className="w-full py-3 rounded-xl font-bold text-white transition-colors bg-[color:var(--btn-bg)] hover:bg-[color:var(--btn-hover)] active:bg-[color:var(--btn-active)] shadow-md"
+        type="button"
+        onClick={() => !isDisabled && onSelect()}
+        disabled={isDisabled}
+        className="machine-card__btn"
       >
-        Vezi Orarul &amp; Rezervă
+        {isDisabled ? 'Indisponibil' : 'Vezi Orarul & Rezervă'}
       </button>
     </div>
   );
