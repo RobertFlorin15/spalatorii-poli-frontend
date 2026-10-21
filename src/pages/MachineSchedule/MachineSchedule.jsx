@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { FiArrowLeft, FiChevronLeft, FiChevronRight, FiX } from 'react-icons/fi';
 import { format, addDays, subDays, isSameDay, differenceInCalendarDays } from 'date-fns';
 import ro from 'date-fns/locale/ro';
-import { bookingsApi } from '../../api';
+import { bookingsApi, maintenanceApi } from '../../api';
 import { userMessage } from '../../api/errors';
 import { logError } from '../../utils/logger';
 import MachineIcon from '../../components/MachineIcon/MachineIcon';
@@ -19,6 +19,7 @@ const CELL_LABELS = {
   mine: 'Rezervarea mea',
   selected: '✓ Selectat',
   past: 'Trecut',
+  maintenance: 'Mentenanță',
 };
 
 const formatDuration = (minutes) => {
@@ -31,6 +32,7 @@ const Portal = ({ children }) => createPortal(children, document.body);
 
 const MachineCalendar = ({ machine, onBack }) => {
   const [events, setEvents] = useState([]);
+  const [maintenances, setMaintenances] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [now, setNow] = useState(new Date());
   const [selectedKeys, setSelectedKeys] = useState([]);
@@ -57,13 +59,23 @@ const MachineCalendar = ({ machine, onBack }) => {
   useEffect(() => {
     if (!machine?.id) return;
     // Primim doar intervale (început, sfârșit, "mine: da/nu"), fără id-urile altor utilizatori
-    const unsubscribe = bookingsApi.subscribeMachineBookings(
+    const unsubBookings = bookingsApi.subscribeMachineBookings(
       machine.id,
       (list) => setEvents(list),
       (error) => logError('calendar', error)
     );
-    return () => unsubscribe();
+    const unsubMaint = maintenanceApi.subscribeMachine(
+      machine.id,
+      (list) => setMaintenances(list),
+      (error) => logError('calendar:maintenance', error)
+    );
+    return () => {
+      unsubBookings();
+      unsubMaint();
+    };
   }, [machine?.id]);
+
+  const dayKey = format(currentDate, 'yyyy-MM-dd');
 
   const slots = useMemo(() => {
     const y = currentDate.getFullYear();
@@ -73,22 +85,32 @@ const MachineCalendar = ({ machine, onBack }) => {
 
     return Array.from({ length: total }, (_, i) => {
       const startMin = openMinutes + i * SLOT_MINUTES;
+      const endMin = startMin + SLOT_MINUTES;
       const start = new Date(y, m, d, 0, startMin);
-      const end = new Date(y, m, d, 0, startMin + SLOT_MINUTES);
-      return { key: start.getTime(), start, end };
+      const end = new Date(y, m, d, 0, endMin);
+      return { key: start.getTime(), start, end, startMin, endMin };
     });
   }, [currentDate, openMinutes, closeMinutes]);
 
   const slotStates = useMemo(() => {
     return slots.map(slot => {
-      const event = events.find(e => slot.start < e.end && slot.end > e.start);
+      // Programările deja făcute rămân active chiar dacă se aplică mentenanță ulterior
+      const event = events.find(e => e.status !== 'cancelled' && slot.start < e.end && slot.end > e.start);
       if (event) {
         return { status: event.mine ? 'mine' : 'busy', event };
       }
+
+      const inMaintenance = maintenances.some((m) => {
+        const endDate = m.endDate || m.startDate;
+        if (dayKey < m.startDate || dayKey > endDate) return false;
+        return slot.startMin < m.endMinutes && slot.endMin > m.startMinutes;
+      });
+      if (inMaintenance) return { status: 'maintenance' };
+
       if (blockPastSlots && slot.end <= now) return { status: 'past' };
       return { status: 'free' };
     });
-  }, [slots, events, now, blockPastSlots]);
+  }, [slots, events, maintenances, dayKey, now, blockPastSlots]);
 
   const selectedSlots = useMemo(
     () => slots
@@ -115,7 +137,6 @@ const MachineCalendar = ({ machine, onBack }) => {
   const isToday = isSameDay(currentDate, now);
   const daysAhead = differenceInCalendarDays(currentDate, now);
   const canGoNext = daysAhead < maxAdvanceDays;
-  const dayKey = format(currentDate, 'yyyy-MM-dd');
 
   useEffect(() => {
     const body = bodyRef.current;
@@ -249,7 +270,10 @@ const MachineCalendar = ({ machine, onBack }) => {
             const state = slotStates[i];
             const isSelected = state.status === 'free' && selectedKeys.includes(slot.key);
             const styleKey = isSelected ? 'selected' : state.status;
-            const isDisabled = state.status === 'busy' || state.status === 'past';
+            const isDisabled =
+              state.status === 'busy' ||
+              state.status === 'past' ||
+              state.status === 'maintenance';
 
             return (
               <div key={slot.key} className="mc-row">

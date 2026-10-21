@@ -7,7 +7,12 @@ function normalizeUser(raw) {
   const roles = (Array.isArray(raw.roles) ? raw.roles : [])
     .map((r) => String(r).replace(/^ROLE_/, '').toUpperCase())
     .filter((r) => KNOWN_ROLES.includes(r));
-  return { id: String(raw.id), name: String(raw.name ?? ''), roles };
+  return {
+    id: String(raw.id),
+    name: String(raw.name ?? ''),
+    room: String(raw.room ?? raw.camera ?? ''),
+    roles,
+  };
 }
 
 /** Returnează utilizatorul curent sau null dacă nu există sesiune. */

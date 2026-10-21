@@ -61,6 +61,15 @@
     padding: 1rem;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
     transition: background-color 0.3s ease, color 0.3s ease;
+
+    &--cancelled {
+      border-color: var(--cal-danger);
+      opacity: 0.92;
+    }
+
+    &--past {
+      opacity: 0.8;
+    }
   }
 
   &__card-top {
@@ -121,6 +130,34 @@
     &--soon {
       color: var(--timer);
     }
+
+    &--cancelled {
+      color: var(--cal-danger);
+    }
+
+    &--done {
+      color: var(--card-muted);
+    }
+  }
+
+  &__card-reason {
+    margin-top: 0.625rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.625rem;
+    background-color: var(--card-inner-bg);
+    border: 1px solid var(--card-inner-border);
+    font-size: 0.8125rem;
+    line-height: 1.25rem;
+    color: var(--card-title);
+  }
+
+  &__card-reason-label {
+    font-weight: 700;
+    color: var(--cal-danger);
+  }
+
+  &__card-reason-text {
+    color: var(--card-title);
   }
 
   &__card-btn {

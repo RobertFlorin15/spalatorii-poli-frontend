@@ -1,7 +1,9 @@
-let currentUserId = null;
+let currentUser = null;
 
 export const setSessionUser = (user) => {
-  currentUserId = user?.id ?? null;
+  currentUser = user ?? null;
 };
 
-export const getSessionUserId = () => currentUserId;
+export const getSessionUser = () => currentUser;
+
+export const getSessionUserId = () => currentUser?.id ?? null;

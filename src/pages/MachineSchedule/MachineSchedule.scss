@@ -302,6 +302,12 @@
     color: var(--cal-past-text);
     border-left-color: var(--cal-past-edge);
   }
+
+  &--maintenance {
+    background: var(--cal-maint-bg);
+    color: var(--cal-maint-text);
+    border-left-color: var(--cal-maint-edge);
+  }
 }
 
 /* Panou flotant de confirmare */

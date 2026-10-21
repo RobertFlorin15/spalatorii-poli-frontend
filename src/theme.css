@@ -69,6 +69,9 @@
   --cal-past-bg: #f1f5f9;
   --cal-past-text: #94a3b8;
   --cal-past-edge: #cbd5e1;
+  --cal-maint-bg: #fef3c7;
+  --cal-maint-text: #b45309;
+  --cal-maint-edge: #f59e0b;
 
   --cal-panel-bg: rgba(255, 255, 255, 0.97);
   --cal-panel-border: #cbd5e1;
@@ -159,6 +162,9 @@
   --cal-past-bg: #0d1424;
   --cal-past-text: #475569;
   --cal-past-edge: #334155;
+  --cal-maint-bg: #2e2010;
+  --cal-maint-text: #fbbf24;
+  --cal-maint-edge: #f59e0b;
 
   --cal-panel-bg: rgba(15, 23, 42, 0.96);
   --cal-panel-border: #475569;

@@ -5,5 +5,6 @@ export const IS_DEV = Boolean(import.meta.env?.DEV);
 export const DEV_MOCK_USER = {
   id: 'dev-student',
   name: 'Student Test',
+  room: '113',
   roles: ['USER', 'ADMIN'],
 };

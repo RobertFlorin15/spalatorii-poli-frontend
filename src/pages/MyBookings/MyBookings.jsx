@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { machinesApi, bookingsApi } from '../../api';
 import { userMessage } from '../../api/errors';
 import { logError } from '../../utils/logger';
-import { format, isSameDay, addDays, differenceInMinutes } from 'date-fns';
+import { format, isSameDay, addDays, subDays, differenceInMinutes } from 'date-fns';
 import ro from 'date-fns/locale/ro';
 import MachineIcon from '../../components/MachineIcon/MachineIcon';
 import SegmentedTabs from '../../components/SegmentedTabs/SegmentedTabs';
@@ -18,6 +18,7 @@ const formatDuration = (minutes) => {
 const dayLabel = (date, now) => {
   if (isSameDay(date, now)) return 'Azi';
   if (isSameDay(date, addDays(now, 1))) return 'Mâine';
+  if (isSameDay(date, subDays(now, 1))) return 'Ieri';
   return format(date, 'EEEE, dd MMMM', { locale: ro });
 };
 
@@ -158,27 +159,27 @@ const MyBookings = ({ onGoToMachines }) => {
     return () => unsub();
   }, []);
 
-  const upcoming = useMemo(
-    () => bookings.filter((b) => b.end > now).sort((a, b) => a.start - b.start),
-    [bookings, now]
+  const sortedBookings = useMemo(
+    () => [...bookings].sort((a, b) => b.start - a.start),
+    [bookings]
   );
 
-  const upcomingByDay = useMemo(() => {
+  const bookingsByDay = useMemo(() => {
     const groups = [];
-    upcoming.forEach((b) => {
+    sortedBookings.forEach((b) => {
       const last = groups[groups.length - 1];
       if (last && isSameDay(last.date, b.start)) last.items.push(b);
       else groups.push({ date: b.start, items: [b] });
     });
     return groups;
-  }, [upcoming]);
+  }, [sortedBookings]);
 
   const stats = useMemo(() => {
     const minutesById = {};
     let sessions = 0;
 
     bookings.forEach((b) => {
-      if (b.start >= now) return;
+      if (b.status === 'cancelled' || b.start >= now) return;
       const usedEnd = b.end < now ? b.end : now;
       const minutes = Math.round((usedEnd - b.start) / 60000);
       if (minutes <= 0) return;
@@ -226,18 +227,32 @@ const MyBookings = ({ onGoToMachines }) => {
 
   const renderCard = (b) => {
     const machine = machines[b.machineId];
-    const inProgress = b.start <= now;
+    const isCancelled = b.status === 'cancelled';
+    const isPast = !isCancelled && b.end <= now;
+    const inProgress = !isCancelled && b.start <= now && b.end > now;
     const minutesToStart = differenceInMinutes(b.start, now);
     const minutesLeft = differenceInMinutes(b.end, now);
 
     let status = null;
-    if (inProgress) status = { text: `În desfășurare · încă ${formatDuration(Math.max(minutesLeft, 1))}`, mod: 'active' };
-    else if (minutesToStart < 24 * 60) status = { text: `Începe în ${formatDuration(Math.max(minutesToStart, 1))}`, mod: 'soon' };
+    if (isCancelled) {
+      status = { text: 'Programare anulată', mod: 'cancelled' };
+    } else if (isPast) {
+      status = { text: 'Finalizată', mod: 'done' };
+    } else if (inProgress) {
+      status = { text: `În desfășurare · încă ${formatDuration(Math.max(minutesLeft, 1))}`, mod: 'active' };
+    } else if (minutesToStart < 24 * 60) {
+      status = { text: `Începe în ${formatDuration(Math.max(minutesToStart, 1))}`, mod: 'soon' };
+    }
 
     const kind = inProgress ? 'release' : 'cancel';
 
     return (
-      <li key={b.id} className="my-bookings__card">
+      <li
+        key={b.id}
+        className={`my-bookings__card ${
+          isCancelled ? 'my-bookings__card--cancelled' : isPast ? 'my-bookings__card--past' : ''
+        }`}
+      >
         <div className="my-bookings__card-top">
           <div className="my-bookings__card-icon">
             <MachineIcon type={machine?.type} size={26} />
@@ -262,13 +277,24 @@ const MyBookings = ({ onGoToMachines }) => {
           </p>
         )}
 
-        <button
-          type="button"
-          onClick={() => { setActionError(null); setPending({ booking: b, kind }); }}
-          className={`my-bookings__card-btn my-bookings__card-btn--${kind}`}
-        >
-          {kind === 'release' ? 'Eliberează mașina' : 'Anulează rezervarea'}
-        </button>
+        {isCancelled && (
+          <div className="my-bookings__card-reason">
+            <span className="my-bookings__card-reason-label">Motiv anulare:</span>{' '}
+            <span className="my-bookings__card-reason-text">
+              {b.cancelReason || 'Nespecificat'}
+            </span>
+          </div>
+        )}
+
+        {!isCancelled && !isPast && (
+          <button
+            type="button"
+            onClick={() => { setActionError(null); setPending({ booking: b, kind }); }}
+            className={`my-bookings__card-btn my-bookings__card-btn--${kind}`}
+          >
+            {kind === 'release' ? 'Eliberează mașina' : 'Anulează rezervarea'}
+          </button>
+        )}
       </li>
     );
   };
@@ -299,17 +325,17 @@ const MyBookings = ({ onGoToMachines }) => {
         value={tab}
         onChange={setTab}
         options={[
-          { value: 'upcoming', label: 'Viitoare', badge: upcoming.length },
+          { value: 'upcoming', label: 'Programări', badge: sortedBookings.length },
           { value: 'stats', label: 'Statistici' },
         ]}
       />
 
-      {/* ---------- Viitoare ---------- */}
+      {/* ---------- Programări ---------- */}
       {tab === 'upcoming' && (
-        upcomingByDay.length === 0 ? (
-          emptyState('Nu ai nicio rezervare viitoare.')
+        bookingsByDay.length === 0 ? (
+          emptyState('Nu ai nicio rezervare înregistrată.')
         ) : (
-          upcomingByDay.map((group) => (
+          bookingsByDay.map((group) => (
             <section key={group.date.toDateString()}>
               <h3 className="my-bookings__day-heading">
                 {dayLabel(group.date, now)}

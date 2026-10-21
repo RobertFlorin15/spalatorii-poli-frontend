@@ -3,7 +3,7 @@ import {
   deleteDoc, updateDoc, setDoc, Timestamp, serverTimestamp,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { getSessionUserId } from './session';
+import { getSessionUser, getSessionUserId } from './session';
 import { ApiError } from './errors';
 import { validateSettings, DEFAULT_SETTINGS } from '../utils/settingsModel';
 
@@ -24,15 +24,32 @@ const invalid = () => new ApiError(422, 'INVALID_REQUEST');
 // "estimate": evită valori null cât timp serverTimestamp() nu s-a confirmat încă
 const readData = (d) => d.data({ serverTimestamps: 'estimate' });
 
-// În UI ajunge doar "mine: true/false", niciodată userId-ul altcuiva
 const toBooking = (d, uid) => {
   const data = readData(d);
   return {
     id: d.id,
     machineId: String(data.machineId ?? ''),
-    start: data.startTime.toDate(),
-    end: data.endTime.toDate(),
+    start: data.startTime?.toDate ? data.startTime.toDate() : new Date(data.startTime),
+    end: data.endTime?.toDate ? data.endTime.toDate() : new Date(data.endTime),
+    status: String(data.status ?? 'active'),
+    cancelReason: data.cancelReason ? String(data.cancelReason) : '',
+    userName: String(data.userName ?? data.name ?? ''),
+    room: String(data.room ?? data.camera ?? ''),
+    userId: String(data.userId ?? ''),
     mine: uid != null && data.userId === uid,
+  };
+};
+
+const toMaintenance = (d) => {
+  const data = readData(d);
+  const startDate = String(data.startDate ?? '');
+  return {
+    id: d.id,
+    machineId: String(data.machineId ?? ''),
+    startDate,
+    endDate: String(data.endDate || startDate),
+    startMinutes: Number(data.startMinutes ?? 0),
+    endMinutes: Number(data.endMinutes ?? 0),
   };
 };
 
@@ -71,7 +88,16 @@ export const bookingsApi = {
   subscribeMachineBookings(machineId, onData, onError) {
     const uid = getSessionUserId();
     const q = query(collection(db, 'bookings'), where('machineId', '==', machineId));
-    return onSnapshot(q, (snap) => onData(snap.docs.map((d) => toBooking(d, uid))), onError);
+    return onSnapshot(
+      q,
+      (snap) =>
+        onData(
+          snap.docs
+            .map((d) => toBooking(d, uid))
+            .filter((b) => b.status !== 'cancelled')
+        ),
+      onError
+    );
   },
 
   subscribeMyBookings(onData, onError) {
@@ -84,8 +110,18 @@ export const bookingsApi = {
     return onSnapshot(q, (snap) => onData(snap.docs.map((d) => toBooking(d, uid))), onError);
   },
 
+  subscribeAll(onData, onError) {
+    const uid = getSessionUserId();
+    return onSnapshot(
+      collection(db, 'bookings'),
+      (snap) => onData(snap.docs.map((d) => toBooking(d, uid))),
+      onError
+    );
+  },
+
   async create(machineId, ranges) {
     const uid = requireUser();
+    const user = getSessionUser();
     if (!machineId || !Array.isArray(ranges) || ranges.length === 0 || ranges.length > MAX_SLOTS_PER_REQUEST) {
       throw invalid();
     }
@@ -96,6 +132,8 @@ export const bookingsApi = {
       batch.set(doc(collection(db, 'bookings')), {
         machineId: String(machineId),
         userId: uid,
+        userName: String(user?.name ?? ''),
+        room: String(user?.room ?? ''),
         startTime: Timestamp.fromDate(start),
         endTime: Timestamp.fromDate(end),
         status: 'active',
@@ -110,10 +148,99 @@ export const bookingsApi = {
     await deleteDoc(doc(db, 'bookings', String(bookingId)));
   },
 
+  async remove(bookingId) {
+    requireUser();
+    if (!bookingId) throw invalid();
+    await deleteDoc(doc(db, 'bookings', String(bookingId)));
+  },
+
+  async adminCancel(bookingId, reason) {
+    const uid = requireUser();
+    const cleanReason = String(reason ?? '').trim();
+    if (!bookingId || !cleanReason) throw invalid();
+
+    await updateDoc(doc(db, 'bookings', String(bookingId)), {
+      status: 'cancelled',
+      cancelReason: cleanReason,
+      cancelledAt: serverTimestamp(),
+      cancelledBy: uid,
+    });
+  },
+
   // Ora de final este cea a serverului, nu a ceasului din browser
   async release(bookingId) {
     requireUser();
     await updateDoc(doc(db, 'bookings', String(bookingId)), { endTime: serverTimestamp() });
+  },
+};
+
+export const maintenanceApi = {
+  subscribeAll(onData, onError) {
+    return onSnapshot(
+      collection(db, 'maintenance'),
+      (snap) => onData(snap.docs.map((d) => toMaintenance(d))),
+      onError
+    );
+  },
+
+  subscribeMachine(machineId, onData, onError) {
+    if (!machineId) {
+      onData([]);
+      return () => {};
+    }
+    const q = query(collection(db, 'maintenance'), where('machineId', '==', String(machineId)));
+    return onSnapshot(
+      q,
+      (snap) => onData(snap.docs.map((d) => toMaintenance(d))),
+      onError
+    );
+  },
+
+  async create({ machineId, startDate, endDate, ranges }) {
+    const uid = requireUser();
+    const cleanStart = String(startDate ?? '').trim();
+    const cleanEnd = String(endDate || startDate || '').trim();
+
+    if (
+      !machineId ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(cleanStart) ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(cleanEnd) ||
+      cleanEnd < cleanStart ||
+      !Array.isArray(ranges) ||
+      ranges.length === 0
+    ) {
+      throw invalid();
+    }
+
+    const batch = writeBatch(db);
+    ranges.forEach(({ startMinutes, endMinutes }) => {
+      if (
+        !Number.isInteger(startMinutes) ||
+        !Number.isInteger(endMinutes) ||
+        startMinutes < 0 ||
+        endMinutes > 24 * 60 ||
+        startMinutes >= endMinutes
+      ) {
+        throw invalid();
+      }
+      batch.set(doc(collection(db, 'maintenance')), {
+        machineId: String(machineId),
+        startDate: cleanStart,
+        endDate: cleanEnd,
+        startMinutes,
+        endMinutes,
+        createdAt: serverTimestamp(),
+        createdBy: uid,
+      });
+    });
+
+    await batch.commit();
+  },
+
+  async remove(maintenanceId) {
+    requireUser();
+    if (!maintenanceId) throw invalid();
+    await deleteDoc(doc(db, 'maintenance', String(maintenanceId)));
   },
 };
 
