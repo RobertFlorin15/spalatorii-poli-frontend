@@ -99,6 +99,8 @@ const AdminPanel = () => {
     openMinutes,
     closeMinutes,
     maxSlots,
+    maxWasherSlotsPerDay,
+    maxDryerSlotsPerDay,
     blockPastSlots,
     maxAdvanceDays,
     loading,
@@ -109,10 +111,20 @@ const AdminPanel = () => {
       openMinutes,
       closeMinutes,
       maxSlots,
+      maxWasherSlotsPerDay,
+      maxDryerSlotsPerDay,
       blockPastSlots,
       maxAdvanceDays,
     }),
-    [openMinutes, closeMinutes, maxSlots, blockPastSlots, maxAdvanceDays]
+    [
+      openMinutes,
+      closeMinutes,
+      maxSlots,
+      maxWasherSlotsPerDay,
+      maxDryerSlotsPerDay,
+      blockPastSlots,
+      maxAdvanceDays,
+    ]
   );
 
   const [machines, setMachines] = useState([]);
@@ -279,6 +291,8 @@ const AdminPanel = () => {
     activeDraft.openMinutes !== saved.openMinutes ||
     activeDraft.closeMinutes !== saved.closeMinutes ||
     activeDraft.maxSlots !== saved.maxSlots ||
+    activeDraft.maxWasherSlotsPerDay !== saved.maxWasherSlotsPerDay ||
+    activeDraft.maxDryerSlotsPerDay !== saved.maxDryerSlotsPerDay ||
     activeDraft.blockPastSlots !== saved.blockPastSlots ||
     activeDraft.maxAdvanceDays !== saved.maxAdvanceDays;
   const error = validateSettings(activeDraft);
@@ -291,6 +305,8 @@ const AdminPanel = () => {
       const next = { ...base, ...changes };
       const total = (next.closeMinutes - next.openMinutes) / SLOT_MINUTES;
       next.maxSlots = Math.max(1, Math.min(next.maxSlots, total));
+      next.maxWasherSlotsPerDay = Math.max(1, Math.min(next.maxWasherSlotsPerDay, total));
+      next.maxDryerSlotsPerDay = Math.max(1, Math.min(next.maxDryerSlotsPerDay, total));
       return next;
     });
   };
@@ -1014,42 +1030,93 @@ const AdminPanel = () => {
         </p>
       </Card>
 
-      {/* Limită per rezervare */}
+      {/* Număr maxim de intervale pe zi (Mașini de spălat & Uscătoare) */}
       <Card>
-        <h3 className="admin-panel__card-title">Durata maximă a unei rezervări</h3>
+        <h3 className="admin-panel__card-title">Număr maxim de intervale pe zi</h3>
         <p className="admin-panel__card-desc">
-          Câte intervale de {SLOT_MINUTES} de minute poate selecta un utilizator într-o singură rezervare.
+          Câte intervale de {SLOT_MINUTES} de minute poate rezerva un utilizator într-o zi, separat pentru mașinile de spălat și pentru uscătoare.
         </p>
 
-        <div className="admin-panel__stepper">
-          <button
-            type="button"
-            className="admin-panel__step-btn"
-            aria-label="Scade limita cu un interval"
-            disabled={activeDraft.maxSlots <= 1}
-            onClick={() => patch({ maxSlots: activeDraft.maxSlots - 1 })}
-          >
-            <FiMinus size={20} aria-hidden="true" />
-          </button>
+        <div className="admin-panel__daily-limits">
+          {/* Mașini de spălat */}
+          <div className="admin-panel__daily-limit-box">
+            <div className="admin-panel__daily-limit-head">
+              <MachineIcon type="washer" size={20} className="admin-panel__option-icon" />
+              <span>Mașini de spălat</span>
+            </div>
 
-          <div className="admin-panel__stepper-display" aria-live="polite">
-            <p className="admin-panel__stepper-value">
-              {formatDuration(activeDraft.maxSlots * SLOT_MINUTES)}
-            </p>
-            <p className="admin-panel__stepper-sub">
-              {activeDraft.maxSlots} {activeDraft.maxSlots === 1 ? 'interval' : 'intervale'} × {SLOT_MINUTES} min
-            </p>
+            <div className="admin-panel__stepper">
+              <button
+                type="button"
+                className="admin-panel__step-btn"
+                aria-label="Scade limita zilnică pentru mașini de spălat"
+                disabled={activeDraft.maxWasherSlotsPerDay <= 1}
+                onClick={() => patch({ maxWasherSlotsPerDay: activeDraft.maxWasherSlotsPerDay - 1 })}
+              >
+                <FiMinus size={20} aria-hidden="true" />
+              </button>
+
+              <div className="admin-panel__stepper-display" aria-live="polite">
+                <p className="admin-panel__stepper-value">
+                  {formatDuration(activeDraft.maxWasherSlotsPerDay * SLOT_MINUTES)}
+                </p>
+                <p className="admin-panel__stepper-sub">
+                  {activeDraft.maxWasherSlotsPerDay}{' '}
+                  {activeDraft.maxWasherSlotsPerDay === 1 ? 'interval' : 'intervale'} / zi
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="admin-panel__step-btn"
+                aria-label="Crește limita zilnică pentru mașini de spălat"
+                disabled={activeDraft.maxWasherSlotsPerDay >= totalSlots}
+                onClick={() => patch({ maxWasherSlotsPerDay: activeDraft.maxWasherSlotsPerDay + 1 })}
+              >
+                <FiPlus size={20} aria-hidden="true" />
+              </button>
+            </div>
           </div>
 
-          <button
-            type="button"
-            className="admin-panel__step-btn"
-            aria-label="Crește limita cu un interval"
-            disabled={activeDraft.maxSlots >= totalSlots}
-            onClick={() => patch({ maxSlots: activeDraft.maxSlots + 1 })}
-          >
-            <FiPlus size={20} aria-hidden="true" />
-          </button>
+          {/* Uscătoare */}
+          <div className="admin-panel__daily-limit-box">
+            <div className="admin-panel__daily-limit-head">
+              <MachineIcon type="dryer" size={20} className="admin-panel__option-icon" />
+              <span>Uscătoare</span>
+            </div>
+
+            <div className="admin-panel__stepper">
+              <button
+                type="button"
+                className="admin-panel__step-btn"
+                aria-label="Scade limita zilnică pentru uscătoare"
+                disabled={activeDraft.maxDryerSlotsPerDay <= 1}
+                onClick={() => patch({ maxDryerSlotsPerDay: activeDraft.maxDryerSlotsPerDay - 1 })}
+              >
+                <FiMinus size={20} aria-hidden="true" />
+              </button>
+
+              <div className="admin-panel__stepper-display" aria-live="polite">
+                <p className="admin-panel__stepper-value">
+                  {formatDuration(activeDraft.maxDryerSlotsPerDay * SLOT_MINUTES)}
+                </p>
+                <p className="admin-panel__stepper-sub">
+                  {activeDraft.maxDryerSlotsPerDay}{' '}
+                  {activeDraft.maxDryerSlotsPerDay === 1 ? 'interval' : 'intervale'} / zi
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="admin-panel__step-btn"
+                aria-label="Crește limita zilnică pentru uscătoare"
+                disabled={activeDraft.maxDryerSlotsPerDay >= totalSlots}
+                onClick={() => patch({ maxDryerSlotsPerDay: activeDraft.maxDryerSlotsPerDay + 1 })}
+              >
+                <FiPlus size={20} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
         </div>
       </Card>
 

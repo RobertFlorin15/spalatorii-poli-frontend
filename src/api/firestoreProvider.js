@@ -254,6 +254,8 @@ export const settingsApi = {
           openMinutes: data.openMinutes,
           closeMinutes: data.closeMinutes,
           maxSlots: data.maxSlots,
+          maxWasherSlotsPerDay: data.maxWasherSlotsPerDay,
+          maxDryerSlotsPerDay: data.maxDryerSlotsPerDay,
           blockPastSlots: data.blockPastSlots,
           maxAdvanceDays: data.maxAdvanceDays,
         });
@@ -278,6 +280,8 @@ export const settingsApi = {
     if (settings.openMinutes !== undefined) payload.openMinutes = settings.openMinutes;
     if (settings.closeMinutes !== undefined) payload.closeMinutes = settings.closeMinutes;
     if (settings.maxSlots !== undefined) payload.maxSlots = settings.maxSlots;
+    if (settings.maxWasherSlotsPerDay !== undefined) payload.maxWasherSlotsPerDay = settings.maxWasherSlotsPerDay;
+    if (settings.maxDryerSlotsPerDay !== undefined) payload.maxDryerSlotsPerDay = settings.maxDryerSlotsPerDay;
     if (settings.blockPastSlots !== undefined) payload.blockPastSlots = settings.blockPastSlots;
     if (settings.maxAdvanceDays !== undefined) payload.maxAdvanceDays = settings.maxAdvanceDays;
 

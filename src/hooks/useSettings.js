@@ -17,10 +17,17 @@ export function useSettings() {
   useEffect(() => {
     const unsubscribe = settingsApi.subscribe(
       (raw) => {
+        const fallbackSlots = raw?.maxSlots ?? DEFAULT_SETTINGS.maxSlots;
         const candidate = {
           openMinutes: raw?.openMinutes ?? DEFAULT_SETTINGS.openMinutes,
           closeMinutes: raw?.closeMinutes ?? DEFAULT_SETTINGS.closeMinutes,
-          maxSlots: raw?.maxSlots ?? DEFAULT_SETTINGS.maxSlots,
+          maxSlots: fallbackSlots,
+          maxWasherSlotsPerDay: Number.isInteger(raw?.maxWasherSlotsPerDay)
+            ? raw.maxWasherSlotsPerDay
+            : fallbackSlots,
+          maxDryerSlotsPerDay: Number.isInteger(raw?.maxDryerSlotsPerDay)
+            ? raw.maxDryerSlotsPerDay
+            : fallbackSlots,
           blockPastSlots: typeof raw?.blockPastSlots === 'boolean'
             ? raw.blockPastSlots
             : DEFAULT_SETTINGS.blockPastSlots,

@@ -753,6 +753,36 @@
     color: var(--card-title);
   }
 
+  &__daily-limits {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.875rem;
+
+    @media (min-width: 640px) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  &__daily-limit-box {
+    padding: 1rem;
+    border-radius: 0.75rem;
+    background-color: var(--card-inner-bg);
+    border: 1px solid var(--card-inner-border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  &__daily-limit-head {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--card-title);
+  }
+
   &__stepper {
     display: flex;
     align-items: center;

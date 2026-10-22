@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { FiArrowLeft, FiChevronLeft, FiChevronRight, FiX } from 'react-icons/fi';
 import { format, addDays, subDays, isSameDay, differenceInCalendarDays } from 'date-fns';
 import ro from 'date-fns/locale/ro';
-import { bookingsApi, maintenanceApi } from '../../api';
+import { machinesApi, bookingsApi, maintenanceApi } from '../../api';
 import { userMessage } from '../../api/errors';
 import { logError } from '../../utils/logger';
 import MachineIcon from '../../components/MachineIcon/MachineIcon';
@@ -32,6 +32,8 @@ const Portal = ({ children }) => createPortal(children, document.body);
 
 const MachineCalendar = ({ machine, onBack }) => {
   const [events, setEvents] = useState([]);
+  const [myBookings, setMyBookings] = useState([]);
+  const [machinesMap, setMachinesMap] = useState({});
   const [maintenances, setMaintenances] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [now, setNow] = useState(new Date());
@@ -46,14 +48,37 @@ const MachineCalendar = ({ machine, onBack }) => {
   const {
     openMinutes,
     closeMinutes,
-    maxSlots: MAX_SLOTS,
+    maxWasherSlotsPerDay,
+    maxDryerSlotsPerDay,
     blockPastSlots,
     maxAdvanceDays,
   } = useSettings();
 
+  const dailyTypeLimit = machine.type === 'dryer' ? maxDryerSlotsPerDay : maxWasherSlotsPerDay;
+  const typeLabel = machine.type === 'dryer' ? 'uscătoare' : 'mașini de spălat';
+
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60 * 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const unsubMachines = machinesApi.subscribe(
+      (list) => {
+        const map = {};
+        list.forEach((m) => { map[m.id] = m; });
+        setMachinesMap(map);
+      },
+      (error) => logError('calendar:machines', error)
+    );
+    const unsubMine = bookingsApi.subscribeMyBookings(
+      (list) => setMyBookings(list),
+      (error) => logError('calendar:my-bookings', error)
+    );
+    return () => {
+      unsubMachines();
+      unsubMine();
+    };
   }, []);
 
   useEffect(() => {
@@ -112,11 +137,27 @@ const MachineCalendar = ({ machine, onBack }) => {
     });
   }, [slots, events, maintenances, dayKey, now, blockPastSlots]);
 
+  // Câte intervale de 30 min a rezervat deja utilizatorul în ziua selectată pe mașini de același tip
+  const usedDailySlots = useMemo(() => {
+    let count = 0;
+    myBookings.forEach((b) => {
+      if (b.status === 'cancelled') return;
+      if (!isSameDay(b.start, currentDate)) return;
+      const bType = machinesMap[b.machineId]?.type ?? (b.machineId === machine.id ? machine.type : null);
+      if (bType !== machine.type) return;
+      const slotsCount = Math.round((b.end.getTime() - b.start.getTime()) / (SLOT_MINUTES * 60 * 1000));
+      if (slotsCount > 0) count += slotsCount;
+    });
+    return count;
+  }, [myBookings, currentDate, machinesMap, machine.id, machine.type]);
+
+  const remainingDailySlots = Math.max(0, dailyTypeLimit - usedDailySlots);
+
   const selectedSlots = useMemo(
     () => slots
       .filter((slot, i) => slotStates[i].status === 'free' && selectedKeys.includes(slot.key))
-      .slice(0, MAX_SLOTS),
-    [slots, slotStates, selectedKeys, MAX_SLOTS]
+      .slice(0, remainingDailySlots),
+    [slots, slotStates, selectedKeys, remainingDailySlots]
   );
 
   const selectedRanges = useMemo(() => {
@@ -133,7 +174,7 @@ const MachineCalendar = ({ machine, onBack }) => {
   }, [selectedSlots]);
 
   const totalMinutes = selectedSlots.length * SLOT_MINUTES;
-  const limitReached = selectedSlots.length >= MAX_SLOTS;
+  const limitReached = selectedSlots.length >= remainingDailySlots;
   const isToday = isSameDay(currentDate, now);
   const daysAhead = differenceInCalendarDays(currentDate, now);
   const canGoNext = daysAhead < maxAdvanceDays;
@@ -162,7 +203,13 @@ const MachineCalendar = ({ machine, onBack }) => {
       setSelectedKeys(selectedKeys.filter(k => k !== slot.key));
       return;
     }
-    if (selectedSlots.length >= MAX_SLOTS) return;
+    if (remainingDailySlots <= 0) {
+      setBookError(
+        `Ai atins limita de ${dailyTypeLimit} ${dailyTypeLimit === 1 ? 'interval' : 'intervale'} (${formatDuration(dailyTypeLimit * SLOT_MINUTES)}) pe zi pentru ${typeLabel}.`
+      );
+      return;
+    }
+    if (selectedSlots.length >= remainingDailySlots) return;
 
     setSelectedKeys([...selectedKeys, slot.key]);
   };
@@ -316,7 +363,7 @@ const MachineCalendar = ({ machine, onBack }) => {
 
               {limitReached && (
                 <p className="mc-warn">
-                  Ai atins limita de {formatDuration(MAX_SLOTS * SLOT_MINUTES)} pe rezervare.
+                  Ai atins limita de {dailyTypeLimit} {dailyTypeLimit === 1 ? 'interval' : 'intervale'} ({formatDuration(dailyTypeLimit * SLOT_MINUTES)}) pe zi pentru {typeLabel}.
                 </p>
               )}
 

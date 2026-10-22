@@ -8,6 +8,8 @@ export const DEFAULT_SETTINGS = {
   openMinutes: 8 * 60,   // 08:00
   closeMinutes: 21 * 60, // 21:00
   maxSlots: 4,           // 4 x 30 min = 2h
+  maxWasherSlotsPerDay: 4, // 4 x 30 min = 2h / zi la mașini de spălat
+  maxDryerSlotsPerDay: 4,  // 4 x 30 min = 2h / zi la uscătoare
   blockPastSlots: true,
   maxAdvanceDays: 7,
 };
@@ -26,7 +28,15 @@ export const formatDuration = (minutes) => {
 
 /** Returnează un mesaj de eroare, sau null dacă setările sunt valide. */
 export const validateSettings = (settings) => {
-  const { openMinutes, closeMinutes, maxSlots, blockPastSlots, maxAdvanceDays } = settings ?? {};
+  const {
+    openMinutes,
+    closeMinutes,
+    maxSlots,
+    maxWasherSlotsPerDay,
+    maxDryerSlotsPerDay,
+    blockPastSlots,
+    maxAdvanceDays,
+  } = settings ?? {};
   const isStep = (n) => Number.isInteger(n) && n % SLOT_MINUTES === 0;
 
   if (!isStep(openMinutes) || openMinutes < 0 || openMinutes > 24 * 60 - SLOT_MINUTES) {
@@ -45,6 +55,18 @@ export const validateSettings = (settings) => {
   }
   if (maxSlots > totalSlots) {
     return 'Limita depășește numărul de intervale dintr-o zi.';
+  }
+
+  if (maxWasherSlotsPerDay !== undefined) {
+    if (!Number.isInteger(maxWasherSlotsPerDay) || maxWasherSlotsPerDay < 1 || maxWasherSlotsPerDay > totalSlots) {
+      return 'Numărul maxim de intervale pe zi pentru mașinile de spălat trebuie să fie între 1 și numărul total de intervale din zi.';
+    }
+  }
+
+  if (maxDryerSlotsPerDay !== undefined) {
+    if (!Number.isInteger(maxDryerSlotsPerDay) || maxDryerSlotsPerDay < 1 || maxDryerSlotsPerDay > totalSlots) {
+      return 'Numărul maxim de intervale pe zi pentru uscătoare trebuie să fie între 1 și numărul total de intervale din zi.';
+    }
   }
 
   if (blockPastSlots !== undefined && typeof blockPastSlots !== 'boolean') {
