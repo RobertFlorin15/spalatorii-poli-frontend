@@ -879,8 +879,8 @@ const AdminPanel = () => {
                       DATA {sortDesc ? '↓' : '↑'}
                     </th>
                     <th>MAȘINĂ</th>
-                    <th>ORĂ ÎNCEPUT</th>
-                    <th>ORĂ SFÂRȘIT</th>
+                    <th className="admin-panel__th-wrap">ORĂ<br />ÎNCEPUT</th>
+                    <th className="admin-panel__th-wrap">ORĂ<br />SFÂRȘIT</th>
                     <th>DURATA</th>
                     <th>NUME</th>
                     <th>CAMERĂ</th>
