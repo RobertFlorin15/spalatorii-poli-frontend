@@ -8,10 +8,12 @@ import {
   FiSliders,
   FiClock,
   FiCalendar,
+  FiUser,
+  FiSearch,
 } from 'react-icons/fi';
 import { addDays, format, differenceInMinutes, isSameDay } from 'date-fns';
 import { useAuth } from '../../context/AuthContext';
-import { machinesApi, bookingsApi, maintenanceApi, settingsApi } from '../../api';
+import { machinesApi, bookingsApi, maintenanceApi, settingsApi, usersApi } from '../../api';
 import { userMessage } from '../../api/errors';
 import { logError } from '../../utils/logger';
 import { useSettings } from '../../hooks/useSettings';
@@ -130,12 +132,18 @@ const AdminPanel = () => {
   const [machines, setMachines] = useState([]);
   const [togglingMachineId, setTogglingMachineId] = useState(null);
   const [availabilityOpen, setAvailabilityOpen] = useState(true);
-  const [maintenanceOpen, setMaintenanceOpen] = useState(true);
-  const [bookingsOpen, setBookingsOpen] = useState(true);
+  const [maintenanceOpen, setMaintenanceOpen] = useState(false);
+  const [bookingsOpen, setBookingsOpen] = useState(false);
+  const [usersOpen, setUsersOpen] = useState(false);
 
   const [draft, setDraft] = useState(null);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null); // { type: 'ok' | 'error', text }
+
+  // Stare Utilizatori
+  const [users, setUsers] = useState([]);
+  const [userSearch, setUserSearch] = useState('');
+  const [busyUserId, setBusyUserId] = useState(null);
 
   // Stare Mentenanță
   const [maintenances, setMaintenances] = useState([]);
@@ -181,8 +189,9 @@ const AdminPanel = () => {
     // CE SE CERE DE LA BACKEND:
     // 1. maintenanceApi.subscribeAll: Toate intervalele de mentenanță (colecția 'maintenance')
     // 2. bookingsApi.subscribeAll: Toate rezervările tuturor utilizatorilor (colecția 'bookings')
+    // 3. usersApi.subscribeAll: Lista tuturor utilizatorilor înregistrați (colecția 'users')
     // CE SE TRIMITE CĂTRE BACKEND:
-    // - Ascultători pe colecțiile 'maintenance' și 'bookings' fără restricție de utilizator
+    // - Ascultători în timp real (onSnapshot) pe colecțiile 'maintenance', 'bookings' și 'users'
     const unsubMaint = maintenanceApi.subscribeAll(
       (list) => {
         const sorted = [...list].sort((a, b) => {
@@ -199,9 +208,18 @@ const AdminPanel = () => {
       (err) => logError('admin:bookings', err)
     );
 
+    const unsubUsers = usersApi.subscribeAll(
+      (list) => {
+        const sorted = [...list].sort((a, b) => a.name.localeCompare(b.name, 'ro'));
+        setUsers(sorted);
+      },
+      (err) => logError('admin:users', err)
+    );
+
     return () => {
       unsubMaint();
       unsubBookings();
+      unsubUsers();
     };
   }, [isAdmin]);
 
@@ -279,6 +297,25 @@ const AdminPanel = () => {
       sortDesc ? b.start.getTime() - a.start.getTime() : a.start.getTime() - b.start.getTime()
     );
   }, [allBookings, bookingSearch, onlyActiveBookings, onlyConsecutive, consecutiveIds, machinesMap, sortDesc]);
+
+  const filteredUsers = useMemo(() => {
+    const q = userSearch.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter((u) => {
+      const name = (u.name || '').toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      const room = (u.room || '').toLowerCase();
+      const phone = (u.phone || '').toLowerCase();
+      const role = (u.role || '').toLowerCase();
+      return (
+        name.includes(q) ||
+        email.includes(q) ||
+        room.includes(q) ||
+        phone.includes(q) ||
+        role.includes(q)
+      );
+    });
+  }, [users, userSearch]);
 
   // Protecție în interfață. Serverul trebuie să verifice rolul ADMIN pe PUT /settings.
   if (!isAdmin) {
@@ -547,6 +584,59 @@ const AdminPanel = () => {
       setStatus({ type: 'error', text: userMessage(err) });
     } finally {
       setBusyBookingId(null);
+    }
+  };
+
+  /* ------------ Acțiuni Utilizatori ------------ */
+  const handleToggleUserApproved = async (targetUser) => {
+    if (busyUserId) return;
+    const nextApproved = !targetUser.approved;
+    setBusyUserId(targetUser.id);
+    setStatus(null);
+    try {
+      // CE SE TRIMITE CĂTRE BACKEND:
+      // - targetUser.id: ID-ul utilizatorului
+      // - nextApproved: boolean (true = aprobat/activ, false = dezactivat)
+      // - În backend se trimit și updatedAt (serverTimestamp) și updatedBy (admin UID)
+      // CE SE CERE DE LA BACKEND:
+      // - Confirmarea actualizării câmpului 'approved' în 'users/{id}'
+      await usersApi.setApproved(targetUser.id, nextApproved);
+      setStatus({
+        type: 'ok',
+        text: `Utilizatorul ${targetUser.name || targetUser.email || targetUser.id} a fost ${
+          nextApproved ? 'activat' : 'dezactivat'
+        }.`,
+      });
+    } catch (err) {
+      logError('admin:user-approved', err);
+      setStatus({ type: 'error', text: userMessage(err) });
+    } finally {
+      setBusyUserId(null);
+    }
+  };
+
+  const handleToggleUserRole = async (targetUser) => {
+    if (busyUserId) return;
+    const nextRole = targetUser.role === 'admin' ? 'user' : 'admin';
+    setBusyUserId(targetUser.id);
+    setStatus(null);
+    try {
+      // CE SE TRIMITE CĂTRE BACKEND:
+      // - targetUser.id: ID-ul utilizatorului
+      // - nextRole: 'admin' | 'user'
+      // - În backend se actualizează role: nextRole, roles: ['USER', 'ADMIN'] sau ['USER'], updatedAt și updatedBy
+      // CE SE CERE DE LA BACKEND:
+      // - Confirmarea actualizării rolului utilizatorului în documentul 'users/{id}'
+      await usersApi.setRole(targetUser.id, nextRole);
+      setStatus({
+        type: 'ok',
+        text: `Rolul utilizatorului ${targetUser.name || targetUser.email || targetUser.id} a fost schimbat în ${nextRole}.`,
+      });
+    } catch (err) {
+      logError('admin:user-role', err);
+      setStatus({ type: 'error', text: userMessage(err) });
+    } finally {
+      setBusyUserId(null);
     }
   };
 
@@ -854,6 +944,118 @@ const AdminPanel = () => {
         )}
       </section>
 
+      {/* Utilizatori */}
+      <section className="admin-panel__accordion">
+        <button
+          type="button"
+          onClick={() => setUsersOpen((o) => !o)}
+          aria-expanded={usersOpen}
+          className={`admin-panel__accordion-header ${
+            !usersOpen ? 'admin-panel__accordion-header--collapsed' : ''
+          }`}
+        >
+          <span className="admin-panel__accordion-title">
+            <FiUser size={18} aria-hidden="true" className="admin-panel__accordion-icon" />
+            Utilizatori ({filteredUsers.length})
+          </span>
+          {usersOpen ? (
+            <FiChevronUp size={18} aria-hidden="true" className="admin-panel__accordion-chevron" />
+          ) : (
+            <FiChevronDown size={18} aria-hidden="true" className="admin-panel__accordion-chevron" />
+          )}
+        </button>
+
+        {usersOpen && (
+          <div className="admin-panel__accordion-body admin-panel__users-body">
+            <div className="admin-panel__users-search-wrap">
+              <FiSearch size={16} aria-hidden="true" className="admin-panel__users-search-icon" />
+              <input
+                type="text"
+                placeholder="Caută utilizatori..."
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                className="admin-panel__users-search-input"
+              />
+            </div>
+
+            <div className="admin-panel__table-wrap">
+              <table className="admin-panel__table admin-panel__table--users">
+                <thead>
+                  <tr>
+                    <th>NUME</th>
+                    <th>EMAIL</th>
+                    <th>CAMERĂ</th>
+                    <th>TELEFON</th>
+                    <th>APROBAT</th>
+                    <th>ROL</th>
+                    <th className="admin-panel__th-actions">ACȚIUNI</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="admin-panel__table-empty">
+                        Nu există utilizatori care să corespundă căutării.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredUsers.map((u) => {
+                      const isBusy = busyUserId === u.id;
+                      const isApproved = u.approved !== false;
+                      const isAdminRole = u.role === 'admin';
+
+                      return (
+                        <tr
+                          key={u.id}
+                          className={`admin-panel__user-row ${
+                            isApproved
+                              ? 'admin-panel__user-row--approved'
+                              : 'admin-panel__user-row--disabled'
+                          }`}
+                        >
+                          <td className="admin-panel__td-user-name">{u.name || '—'}</td>
+                          <td className="admin-panel__td-user-email">{u.email || '—'}</td>
+                          <td className="admin-panel__td-nowrap">{u.room || '—'}</td>
+                          <td className="admin-panel__td-nowrap">{u.phone || '—'}</td>
+                          <td className="admin-panel__td-nowrap">{isApproved ? 'Da' : 'Nu'}</td>
+                          <td className="admin-panel__td-nowrap">{u.role}</td>
+                          <td className="admin-panel__td-actions">
+                            <div className="admin-panel__booking-actions">
+                              <button
+                                type="button"
+                                disabled={isBusy}
+                                onClick={() => handleToggleUserApproved(u)}
+                                className={`admin-panel__btn-user-status ${
+                                  isApproved
+                                    ? 'admin-panel__btn-user-status--deactivate'
+                                    : 'admin-panel__btn-user-status--activate'
+                                }`}
+                              >
+                                {isApproved ? 'Dezactivează' : 'Activează'}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isBusy}
+                                onClick={() => handleToggleUserRole(u)}
+                                className={`admin-panel__btn-user-role ${
+                                  isAdminRole ? 'admin-panel__btn-user-role--demote' : ''
+                                }`}
+                              >
+                                {isAdminRole ? 'Remove Admin' : 'Make Admin'}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </section>
+
       {/* Programări */}
       <section className="admin-panel__accordion">
         <button
@@ -1023,6 +1225,7 @@ const AdminPanel = () => {
           </div>
         )}
       </section>
+
 
       {/* Program */}
       <Card>

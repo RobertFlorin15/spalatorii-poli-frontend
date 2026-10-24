@@ -11,6 +11,10 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let cancelled = false;
 
+    // CE SE CERE DE LA BACKEND:
+    // - Profilul utilizatorului autentificat (id, name, room, roles) prin getSession()
+    // CE SE TRIMITE CĂTRE BACKEND:
+    // - Credențialele / cookie-ul de sesiune
     getSession()
       .then((user) => {
         if (cancelled) return;
@@ -29,6 +33,10 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     try {
+      // CE SE TRIMITE CĂTRE BACKEND:
+      // - Cerere de deconectare / invalidare sesiune
+      // CE SE CERE DE LA BACKEND:
+      // - Confirmarea deconectării
       await logoutRequest();
     } catch (error) {
       logError('auth:logout', error);

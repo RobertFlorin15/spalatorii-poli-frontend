@@ -510,7 +510,8 @@
       border-bottom: 0;
     }
 
-    &--bookings {
+    &--bookings,
+    &--users {
       th,
       td {
         padding: 0.55rem 0.45rem;
@@ -679,6 +680,133 @@
       padding: 0.375rem 0.65rem;
       border-radius: 0.375rem;
       font-size: 0.75rem;
+    }
+  }
+
+  /* =========================================================
+     Secțiunea Utilizatori
+     ========================================================= */
+  &__users-body {
+    gap: 1rem;
+  }
+
+  &__users-search-wrap {
+    position: relative;
+    width: 100%;
+  }
+
+  &__users-search-icon {
+    position: absolute;
+    left: 0.875rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--card-muted);
+    pointer-events: none;
+  }
+
+  &__users-search-input {
+    width: 100%;
+    padding: 0.65rem 0.875rem 0.65rem 2.35rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--field-border);
+    background-color: var(--card-inner-bg);
+    color: var(--card-title);
+    font-size: 0.875rem;
+
+    &::placeholder {
+      color: var(--card-muted);
+    }
+
+    &:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--btn-bg);
+    }
+  }
+
+  &__user-row {
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+
+    &--approved td:first-child {
+      border-left: 3px solid #22c55e;
+    }
+
+    &--disabled {
+      opacity: 0.58;
+
+      td:first-child {
+        border-left: 3px solid #ef4444;
+      }
+    }
+  }
+
+  &__td-user-name {
+    font-weight: 500;
+    min-width: 8rem;
+  }
+
+  &__td-user-email {
+    color: var(--card-muted);
+    word-break: break-all;
+  }
+
+  &__btn-user-status {
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
+    border: 0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #ffffff;
+    cursor: pointer;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+
+    &--deactivate {
+      background-color: #ef4444;
+
+      &:hover:not(:disabled) {
+        background-color: #dc2626;
+      }
+    }
+
+    &--activate {
+      background-color: #22c55e;
+
+      &:hover:not(:disabled) {
+        background-color: #16a34a;
+      }
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__btn-user-role {
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
+    border: 0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #ffffff;
+    background-color: var(--btn-bg);
+    cursor: pointer;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+
+    &:hover:not(:disabled) {
+      background-color: var(--btn-hover);
+    }
+
+    &--demote {
+      background-color: #64748b;
+
+      &:hover:not(:disabled) {
+        background-color: #475569;
+      }
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
   }
 

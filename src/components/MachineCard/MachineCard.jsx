@@ -46,7 +46,11 @@ const MachineCard = ({ machine, onSelect }) => {
       setTimeRemaining(0);
     };
 
-    // Primim doar intervalele ocupate (fără datele altor utilizatori)
+    // CE SE CERE DE LA BACKEND:
+    // 1. bookingsApi.subscribeMachineBookings: Rezervările active ale mașinii (pentru a calcula dacă e ocupată acum și cât timp a rămas)
+    // 2. maintenanceApi.subscribeMachine: Perioadele de mentenanță ale mașinii (pentru a afișa dacă e în mentenanță)
+    // CE SE TRIMITE CĂTRE BACKEND:
+    // - Filtrele Firestore: where('machineId', '==', machine.id) pe colecțiile 'bookings' și 'maintenance'
     const unsubBookings = bookingsApi.subscribeMachineBookings(
       machine.id,
       (list) => {

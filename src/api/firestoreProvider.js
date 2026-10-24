@@ -86,6 +86,40 @@ const toMaintenance = (d) => {
   };
 };
 
+/**
+ * Mapează un document brut din colecția 'users' la structura utilizată în panoul de administrare.
+ *
+ * CE SE CERE / PRIMEȘTE DE LA BACKEND (colecția 'users'):
+ * - d.id: string (ID-ul utilizatorului)
+ * - data.name / data.userName / data.displayName: string (numele complet al utilizatorului)
+ * - data.email: string (adresa de email)
+ * - data.room / data.camera: string (numărul camerei)
+ * - data.phone / data.telefon / data.phoneNumber: string (numărul de telefon)
+ * - data.approved / data.enabled / data.active: boolean (dacă contul este aprobat/activ)
+ * - data.role / data.roles: string sau string[] (rolul utilizatorului: 'user' sau 'admin')
+ *
+ * CE RETURNEAZĂ CĂTRE FRONTEND:
+ * - Obiect normalizat: { id, name, email, room, phone, approved, role }
+ */
+const toUser = (d) => {
+  const data = readData(d);
+  const rawRole = String(data.role ?? '').toLowerCase();
+  const rolesArr = Array.isArray(data.roles)
+    ? data.roles.map((r) => String(r).replace(/^ROLE_/, '').toUpperCase())
+    : [];
+  const isAdminRole = rawRole === 'admin' || rolesArr.includes('ADMIN');
+
+  return {
+    id: d.id,
+    name: String(data.name ?? data.userName ?? data.displayName ?? ''),
+    email: String(data.email ?? ''),
+    room: String(data.room ?? data.camera ?? ''),
+    phone: String(data.phone ?? data.telefon ?? data.phoneNumber ?? ''),
+    approved: data.approved !== false && data.enabled !== false && data.active !== false,
+    role: isAdminRole ? 'admin' : 'user',
+  };
+};
+
 export const machinesApi = {
   /**
    * Ascultă în timp real lista tuturor mașinilor.
@@ -515,5 +549,73 @@ export const settingsApi = {
     if (settings.maxAdvanceDays !== undefined) payload.maxAdvanceDays = settings.maxAdvanceDays;
 
     await setDoc(doc(db, 'settings', 'booking'), payload, { merge: true });
+  },
+};
+
+export const usersApi = {
+  /**
+   * Ascultă în timp real lista tuturor utilizatorilor (pentru Panoul de Administrare).
+   *
+   * CE SE TRIMITE CĂTRE BACKEND:
+   * - Referință către colecția 'users'.
+   *
+   * CE SE CERE / PRIMEȘTE DE LA BACKEND:
+   * - Snapshot cu toate documentele utilizatorilor, mapate prin toUser().
+   */
+  subscribeAll(onData, onError) {
+    return onSnapshot(
+      collection(db, 'users'),
+      (snap) => onData(snap.docs.map((d) => toUser(d))),
+      onError
+    );
+  },
+
+  /**
+   * Activează / dezactivează (aprobă) contul unui utilizator în colecția 'users'.
+   *
+   * CE SE TRIMITE CĂTRE BACKEND:
+   * - Calea documentului: 'users/{userId}'
+   * - Câmpuri actualizate:
+   *   - approved: boolean
+   *   - updatedAt: FieldValue (serverTimestamp())
+   *   - updatedBy: string (ID-ul administratorului)
+   *
+   * CE SE CERE DE LA BACKEND:
+   * - Confirmarea actualizării stării de aprobare a utilizatorului (Promise<void>).
+   */
+  async setApproved(userId, approved) {
+    const uid = requireUser();
+    if (!userId || typeof approved !== 'boolean') throw invalid();
+    await updateDoc(doc(db, 'users', String(userId)), {
+      approved,
+      updatedAt: serverTimestamp(),
+      updatedBy: uid,
+    });
+  },
+
+  /**
+   * Schimbă rolul unui utilizator între 'user' și 'admin'.
+   *
+   * CE SE TRIMITE CĂTRE BACKEND:
+   * - Calea documentului: 'users/{userId}'
+   * - Câmpuri actualizate:
+   *   - role: 'admin' | 'user'
+   *   - roles: ['USER', 'ADMIN'] | ['USER']
+   *   - updatedAt: FieldValue (serverTimestamp())
+   *   - updatedBy: string (ID-ul administratorului)
+   *
+   * CE SE CERE DE LA BACKEND:
+   * - Confirmarea actualizării rolului utilizatorului (Promise<void>).
+   */
+  async setRole(userId, role) {
+    const uid = requireUser();
+    const nextRole = role === 'admin' ? 'admin' : role === 'user' ? 'user' : null;
+    if (!userId || !nextRole) throw invalid();
+    await updateDoc(doc(db, 'users', String(userId)), {
+      role: nextRole,
+      roles: nextRole === 'admin' ? ['USER', 'ADMIN'] : ['USER'],
+      updatedAt: serverTimestamp(),
+      updatedBy: uid,
+    });
   },
 };
