@@ -103,6 +103,11 @@ const MachineList = ({ onSelectMachine }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // CE SE CERE DE LA BACKEND:
+    // - Lista mașinilor disponibile în timp real (colecția 'machines')
+    //   cu proprietățile: id, name, type ('washer' | 'dryer') și enabled (boolean)
+    // CE SE TRIMITE CĂTRE BACKEND:
+    // - Subscripția onSnapshot pe colecția 'machines'
     const unsubscribe = machinesApi.subscribe(
       (list) => {
         setMachines(list);

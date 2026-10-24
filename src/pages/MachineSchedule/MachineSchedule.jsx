@@ -63,6 +63,11 @@ const MachineCalendar = ({ machine, onBack }) => {
   }, []);
 
   useEffect(() => {
+    // CE SE CERE DE LA BACKEND:
+    // 1. machinesApi.subscribe: Lista mașinilor (pentru a cunoaște tipul mașinii asociate fiecărei rezervări)
+    // 2. bookingsApi.subscribeMyBookings: Rezervările utilizatorului logat (pentru calculul limitei zilnice)
+    // CE SE TRIMITE CĂTRE BACKEND:
+    // - Ascultători pe colecția 'machines' și query 'bookings' unde userId == uid
     const unsubMachines = machinesApi.subscribe(
       (list) => {
         const map = {};
@@ -83,7 +88,11 @@ const MachineCalendar = ({ machine, onBack }) => {
 
   useEffect(() => {
     if (!machine?.id) return;
-    // Primim doar intervale (început, sfârșit, "mine: da/nu"), fără id-urile altor utilizatori
+    // CE SE CERE DE LA BACKEND:
+    // 1. bookingsApi.subscribeMachineBookings: Rezervările active ale acestei mașini (start, end, status)
+    // 2. maintenanceApi.subscribeMachine: Perioadele de mentenanță programate pentru această mașină
+    // CE SE TRIMITE CĂTRE BACKEND:
+    // - Filtrele Firestore: where('machineId', '==', machine.id) pentru ambele colecții
     const unsubBookings = bookingsApi.subscribeMachineBookings(
       machine.id,
       (list) => setEvents(list),
@@ -220,7 +229,12 @@ const MachineCalendar = ({ machine, onBack }) => {
     setBookError(null);
 
     try {
-      // O singură cerere atomică. Serverul verifică programul, limita, suprapunerile și ora.
+      // CE SE TRIMITE CĂTRE BACKEND:
+      // - machine.id: ID-ul mașinii
+      // - selectedRanges: Array<{ start: Date, end: Date }>
+      // - În backend se adaugă userId, userName, room și createdAt
+      // CE SE CERE DE LA BACKEND:
+      // - Salvarea atomică (batch) și confirmarea creării rezervărilor
       await bookingsApi.create(machine.id, selectedRanges);
       setSelectedKeys([]);
     } catch (error) {
@@ -237,6 +251,10 @@ const MachineCalendar = ({ machine, onBack }) => {
     if (!target) return;
 
     try {
+      // CE SE TRIMITE CĂTRE BACKEND:
+      // - target.id: ID-ul documentului de rezervare de șters ('bookings/{id}')
+      // CE SE CERE DE LA BACKEND:
+      // - Confirmarea ștergerii rezervării
       await bookingsApi.cancel(target.id);
     } catch (error) {
       logError('booking:cancel', error);

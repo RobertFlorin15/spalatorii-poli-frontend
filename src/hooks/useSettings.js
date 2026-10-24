@@ -15,6 +15,11 @@ export function useSettings() {
   const [state, setState] = useState({ ...DEFAULT_SETTINGS, loading: true });
 
   useEffect(() => {
+    // CE SE CERE DE LA BACKEND:
+    // - Documentul 'settings/booking' în timp real via settingsApi.subscribe
+    //   (openMinutes, closeMinutes, maxSlots, maxWasherSlotsPerDay, maxDryerSlotsPerDay, blockPastSlots, maxAdvanceDays)
+    // CE SE TRIMITE CĂTRE BACKEND:
+    // - Ascultătorul (listener onSnapshot) pe documentul din Firestore
     const unsubscribe = settingsApi.subscribe(
       (raw) => {
         const fallbackSlots = raw?.maxSlots ?? DEFAULT_SETTINGS.maxSlots;

@@ -133,6 +133,10 @@ const MyBookings = ({ onGoToMachines }) => {
 
   // Mașinile (id -> {name, type})
   useEffect(() => {
+    // CE SE CERE DE LA BACKEND:
+    // - Lista mașinilor din Firestore (pentru a afișa numele și tipul mașinii în istoric și grafic)
+    // CE SE TRIMITE CĂTRE BACKEND:
+    // - Listener pe colecția 'machines'
     const unsub = machinesApi.subscribe(
       (list) => {
         const map = {};
@@ -146,6 +150,10 @@ const MyBookings = ({ onGoToMachines }) => {
 
   // Rezervările utilizatorului curent (serverul îl știe din sesiune, nu îl trimitem noi)
   useEffect(() => {
+    // CE SE CERE DE LA BACKEND:
+    // - Rezervările proprii ale studentului logat (unde userId == uid-ul curent)
+    // CE SE TRIMITE CĂTRE BACKEND:
+    // - Query filter pe 'bookings' cu userId-ul din sesiune
     const unsub = bookingsApi.subscribeMyBookings(
       (list) => {
         setBookings(list);
@@ -208,8 +216,16 @@ const MyBookings = ({ onGoToMachines }) => {
     setActionError(null);
     try {
       if (pending.kind === 'release') {
+        // CE SE TRIMITE CĂTRE BACKEND:
+        // - ID-ul rezervării către bookingsApi.release: updateDoc cu endTime = serverTimestamp()
+        // CE SE CERE DE LA BACKEND:
+        // - Confirmarea actualizării orei de sfârșit (eliberare imediată)
         await bookingsApi.release(pending.booking.id);
       } else {
+        // CE SE TRIMITE CĂTRE BACKEND:
+        // - ID-ul rezervării către bookingsApi.cancel: deleteDoc pe 'bookings/{id}'
+        // CE SE CERE DE LA BACKEND:
+        // - Confirmarea ștergerii rezervării
         await bookingsApi.cancel(pending.booking.id);
       }
       setPending(null);

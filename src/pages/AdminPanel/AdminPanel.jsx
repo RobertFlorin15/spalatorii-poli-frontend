@@ -158,6 +158,10 @@ const AdminPanel = () => {
   const [busyBookingId, setBusyBookingId] = useState(null);
 
   useEffect(() => {
+    // CE SE CERE DE LA BACKEND:
+    // - Lista mașinilor din Firestore (colecția 'machines')
+    // CE SE TRIMITE CĂTRE BACKEND:
+    // - Subscripție în timp real pe colecția 'machines'
     const unsub = machinesApi.subscribe(
       (list) => {
         const sorted = [...list].sort((a, b) => {
@@ -173,6 +177,12 @@ const AdminPanel = () => {
 
   useEffect(() => {
     if (!isAdmin) return undefined;
+
+    // CE SE CERE DE LA BACKEND:
+    // 1. maintenanceApi.subscribeAll: Toate intervalele de mentenanță (colecția 'maintenance')
+    // 2. bookingsApi.subscribeAll: Toate rezervările tuturor utilizatorilor (colecția 'bookings')
+    // CE SE TRIMITE CĂTRE BACKEND:
+    // - Ascultători pe colecțiile 'maintenance' și 'bookings' fără restricție de utilizator
     const unsubMaint = maintenanceApi.subscribeAll(
       (list) => {
         const sorted = [...list].sort((a, b) => {
@@ -317,6 +327,12 @@ const AdminPanel = () => {
     setTogglingMachineId(machine.id);
     setStatus(null);
     try {
+      // CE SE TRIMITE CĂTRE BACKEND:
+      // - machine.id: ID-ul mașinii
+      // - nextEnabled: boolean (true = activează, false = dezactivează)
+      // - În backend se trimit și updatedAt (serverTimestamp) și updatedBy (admin UID)
+      // CE SE CERE DE LA BACKEND:
+      // - Confirmarea actualizării documentului 'machines/{id}'
       await machinesApi.setEnabled(machine.id, nextEnabled);
       setStatus({
         type: 'ok',
@@ -336,6 +352,10 @@ const AdminPanel = () => {
     setDraft(nextDraft);
     setStatus(null);
     try {
+      // CE SE TRIMITE CĂTRE BACKEND:
+      // - Obiectul setărilor cu { blockPastSlots: nextVal, updatedAt, updatedBy }
+      // CE SE CERE DE LA BACKEND:
+      // - Confirmarea salvării în 'settings/booking'
       await settingsApi.update(nextDraft);
       setStatus({
         type: 'ok',
@@ -352,6 +372,11 @@ const AdminPanel = () => {
     setSaving(true);
     setStatus(null);
     try {
+      // CE SE TRIMITE CĂTRE BACKEND:
+      // - activeDraft: { openMinutes, closeMinutes, maxSlots, maxWasherSlotsPerDay, maxDryerSlotsPerDay, maxAdvanceDays, blockPastSlots }
+      // - updatedAt: serverTimestamp(), updatedBy: uid
+      // CE SE CERE DE LA BACKEND:
+      // - Salvarea cu merge în documentul 'settings/booking' și confirmarea modificării
       await settingsApi.update(activeDraft);
       setStatus({ type: 'ok', text: 'Setările au fost salvate.' });
     } catch (err) {
@@ -405,6 +430,14 @@ const AdminPanel = () => {
 
     setAddingMaint(true);
     try {
+      // CE SE TRIMITE CĂTRE BACKEND:
+      // - machineId: string (ID-ul mașinii selectate)
+      // - startDate: 'YYYY-MM-DD'
+      // - endDate: 'YYYY-MM-DD'
+      // - ranges: Array<{ startMinutes: number, endMinutes: number }>
+      // - În backend se adaugă createdAt (serverTimestamp) și createdBy (admin UID)
+      // CE SE CERE DE LA BACKEND:
+      // - Salvarea atomică a intervalelor în colecția 'maintenance' și confirmarea operațiunii
       await maintenanceApi.create({
         machineId: maintMachineId,
         startDate: maintStartDate,
@@ -429,6 +462,10 @@ const AdminPanel = () => {
     setDeletingMaintId(id);
     setStatus(null);
     try {
+      // CE SE TRIMITE CĂTRE BACKEND:
+      // - id: string (ID-ul documentului de mentenanță de șters din 'maintenance/{id}')
+      // CE SE CERE DE LA BACKEND:
+      // - Confirmarea ștergerii documentului
       await maintenanceApi.remove(id);
       setStatus({ type: 'ok', text: 'Intervalul de mentenanță a fost șters.' });
     } catch (err) {
@@ -476,6 +513,12 @@ const AdminPanel = () => {
     setReasonErrorId(null);
     setStatus(null);
     try {
+      // CE SE TRIMITE CĂTRE BACKEND:
+      // - booking.id: ID-ul rezervării ('bookings/{id}')
+      // - reason: textul motivului de anulare completat de admin
+      // - În backend se trimit status: 'cancelled', cancelReason, cancelledAt: serverTimestamp, cancelledBy: admin UID
+      // CE SE CERE DE LA BACKEND:
+      // - Confirmarea actualizării stării rezervării
       await bookingsApi.adminCancel(booking.id, reason);
       setSelectedBookingIds((prev) => prev.filter((id) => id !== booking.id));
       setStatus({ type: 'ok', text: 'Programarea a fost anulată.' });
@@ -492,6 +535,10 @@ const AdminPanel = () => {
     setBusyBookingId(booking.id);
     setStatus(null);
     try {
+      // CE SE TRIMITE CĂTRE BACKEND:
+      // - booking.id: ID-ul documentului de rezervare de șters ('bookings/{id}')
+      // CE SE CERE DE LA BACKEND:
+      // - Confirmarea ștergerii documentului
       await bookingsApi.remove(booking.id);
       setSelectedBookingIds((prev) => prev.filter((id) => id !== booking.id));
       setStatus({ type: 'ok', text: 'Programarea a fost ștearsă integral.' });
