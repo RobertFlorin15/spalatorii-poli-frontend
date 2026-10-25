@@ -5,6 +5,7 @@ import './App.scss';
 import { useTheme } from './hooks/useTheme';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ThemeToggle from './components/ThemeToggle/ThemeToggle';
+import RegulationsMenu from './components/RegulationsMenu/RegulationsMenu';
 import SegmentedTabs from './components/SegmentedTabs/SegmentedTabs';
 import MachineList from './pages/MachineList/MachineList';
 import MachineSchedule from './pages/MachineSchedule/MachineSchedule';
@@ -118,6 +119,7 @@ function AppShell({ theme, toggleTheme }) {
           )}
 
           <div className="app-shell__header-right">
+            <RegulationsMenu />
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
           </div>
         </header>
