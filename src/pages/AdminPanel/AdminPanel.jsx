@@ -137,6 +137,8 @@ const AdminPanel = () => {
   const [usersOpen, setUsersOpen] = useState(false);
 
   const [draft, setDraft] = useState(null);
+  const [washerCountDraft, setWasherCountDraft] = useState(null);
+  const [dryerCountDraft, setDryerCountDraft] = useState(null);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState(null); // { type: 'ok' | 'error', text }
 
@@ -333,8 +335,18 @@ const AdminPanel = () => {
 
   const activeDraft = draft ?? saved;
 
+  const savedWasherCount = machines.filter((m) => m.type === 'washer').length;
+  const savedDryerCount = machines.filter((m) => m.type === 'dryer').length;
+
+  const activeWasherCount = washerCountDraft ?? savedWasherCount;
+  const activeDryerCount = dryerCountDraft ?? savedDryerCount;
+
   const totalSlots = (activeDraft.closeMinutes - activeDraft.openMinutes) / SLOT_MINUTES;
+  const countsDirty =
+    activeWasherCount !== savedWasherCount ||
+    activeDryerCount !== savedDryerCount;
   const dirty =
+    countsDirty ||
     activeDraft.openMinutes !== saved.openMinutes ||
     activeDraft.closeMinutes !== saved.closeMinutes ||
     activeDraft.maxSlots !== saved.maxSlots ||
@@ -414,7 +426,12 @@ const AdminPanel = () => {
       // - updatedAt: serverTimestamp(), updatedBy: uid
       // CE SE CERE DE LA BACKEND:
       // - Salvarea cu merge în documentul 'settings/booking' și confirmarea modificării
-      await settingsApi.update(activeDraft);
+      if (countsDirty) {
+        await machinesApi.syncCounts(activeWasherCount, activeDryerCount, machines);
+      }
+      await settingsApi.update({ ...activeDraft, isConfigured: true });
+      setWasherCountDraft(null);
+      setDryerCountDraft(null);
       setStatus({ type: 'ok', text: 'Setările au fost salvate.' });
     } catch (err) {
       logError('settings:update', err);
@@ -1227,6 +1244,100 @@ const AdminPanel = () => {
       </section>
 
 
+      {/* Număr de mașini de spălat și uscătoare */}
+      <Card>
+        <h3 className="admin-panel__card-title">Număr de mașini și uscătoare</h3>
+        <p className="admin-panel__card-desc">
+          Configurează câte mașini de spălat și câte uscătoare sunt instalate în spălătoria căminului.
+        </p>
+
+        <div className="admin-panel__daily-limits">
+          <div className="admin-panel__daily-limit-box">
+            <div className="admin-panel__daily-limit-head">
+              <MachineIcon type="washer" size={20} className="admin-panel__option-icon" />
+              <span>Mașini de spălat</span>
+            </div>
+
+            <div className="admin-panel__stepper">
+              <button
+                type="button"
+                className="admin-panel__step-btn"
+                aria-label="Scade numărul de mașini de spălat"
+                disabled={activeWasherCount <= 1}
+                onClick={() => {
+                  setStatus(null);
+                  setWasherCountDraft(Math.max(1, activeWasherCount - 1));
+                }}
+              >
+                <FiMinus size={20} aria-hidden="true" />
+              </button>
+
+              <div className="admin-panel__stepper-display" aria-live="polite">
+                <p className="admin-panel__stepper-value">{activeWasherCount}</p>
+                <p className="admin-panel__stepper-sub">
+                  {activeWasherCount === 1 ? 'mașină de spălat' : 'mașini de spălat'}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="admin-panel__step-btn"
+                aria-label="Crește numărul de mașini de spălat"
+                disabled={activeWasherCount >= 30}
+                onClick={() => {
+                  setStatus(null);
+                  setWasherCountDraft(Math.min(30, activeWasherCount + 1));
+                }}
+              >
+                <FiPlus size={20} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+
+          <div className="admin-panel__daily-limit-box">
+            <div className="admin-panel__daily-limit-head">
+              <MachineIcon type="dryer" size={20} className="admin-panel__option-icon" />
+              <span>Uscătoare</span>
+            </div>
+
+            <div className="admin-panel__stepper">
+              <button
+                type="button"
+                className="admin-panel__step-btn"
+                aria-label="Scade numărul de uscătoare"
+                disabled={activeDryerCount <= 0}
+                onClick={() => {
+                  setStatus(null);
+                  setDryerCountDraft(Math.max(0, activeDryerCount - 1));
+                }}
+              >
+                <FiMinus size={20} aria-hidden="true" />
+              </button>
+
+              <div className="admin-panel__stepper-display" aria-live="polite">
+                <p className="admin-panel__stepper-value">{activeDryerCount}</p>
+                <p className="admin-panel__stepper-sub">
+                  {activeDryerCount === 1 ? 'uscător' : 'uscătoare'}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="admin-panel__step-btn"
+                aria-label="Crește numărul de uscătoare"
+                disabled={activeDryerCount >= 30}
+                onClick={() => {
+                  setStatus(null);
+                  setDryerCountDraft(Math.min(30, activeDryerCount + 1));
+                }}
+              >
+                <FiPlus size={20} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </Card>
+
       {/* Program */}
       <Card>
         <h3 className="admin-panel__card-title">Program de rezervare</h3>
@@ -1389,7 +1500,12 @@ const AdminPanel = () => {
         <button
           type="button"
           disabled={saving}
-          onClick={() => { setStatus(null); setDraft({ ...DEFAULT_SETTINGS }); }}
+          onClick={() => {
+            setStatus(null);
+            setDraft({ ...DEFAULT_SETTINGS });
+            setWasherCountDraft(null);
+            setDryerCountDraft(null);
+          }}
           className="admin-panel__btn-reset"
         >
           Valori implicite

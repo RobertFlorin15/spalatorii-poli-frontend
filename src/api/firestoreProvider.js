@@ -176,6 +176,67 @@ export const machinesApi = {
       updatedBy: uid,
     });
   },
+
+  /**
+   * Sincronizează numărul de mașini de spălat și de uscătoare din colecția 'machines'.
+   * Păstrează echipamentele existente și adaugă/șterge diferența.
+   */
+  async syncCounts(washerCount, dryerCount, existingMachines = []) {
+    const uid = requireUser();
+    if (
+      !Number.isInteger(washerCount) ||
+      washerCount < 1 ||
+      washerCount > 30 ||
+      !Number.isInteger(dryerCount) ||
+      dryerCount < 0 ||
+      dryerCount > 30
+    ) {
+      throw invalid();
+    }
+
+    const washers = existingMachines
+      .filter((m) => m.type === 'washer')
+      .sort((a, b) => a.name.localeCompare(b.name, 'ro', { numeric: true }));
+    const dryers = existingMachines
+      .filter((m) => m.type === 'dryer')
+      .sort((a, b) => a.name.localeCompare(b.name, 'ro', { numeric: true }));
+
+    const batch = writeBatch(db);
+
+    if (washerCount > washers.length) {
+      for (let i = washers.length + 1; i <= washerCount; i += 1) {
+        batch.set(doc(collection(db, 'machines')), {
+          name: `Mașina ${i}`,
+          type: 'washer',
+          enabled: true,
+          createdAt: serverTimestamp(),
+          createdBy: uid,
+        });
+      }
+    } else if (washerCount < washers.length) {
+      washers.slice(washerCount).forEach((m) => {
+        batch.delete(doc(db, 'machines', String(m.id)));
+      });
+    }
+
+    if (dryerCount > dryers.length) {
+      for (let i = dryers.length + 1; i <= dryerCount; i += 1) {
+        batch.set(doc(collection(db, 'machines')), {
+          name: `Uscător ${i}`,
+          type: 'dryer',
+          enabled: true,
+          createdAt: serverTimestamp(),
+          createdBy: uid,
+        });
+      }
+    } else if (dryerCount < dryers.length) {
+      dryers.slice(dryerCount).forEach((m) => {
+        batch.delete(doc(db, 'machines', String(m.id)));
+      });
+    }
+
+    await batch.commit();
+  },
 };
 
 export const bookingsApi = {
@@ -503,6 +564,7 @@ export const settingsApi = {
           maxDryerSlotsPerDay: data.maxDryerSlotsPerDay,
           blockPastSlots: data.blockPastSlots,
           maxAdvanceDays: data.maxAdvanceDays,
+          isConfigured: data.isConfigured === true,
         });
       },
       onError
@@ -547,6 +609,7 @@ export const settingsApi = {
     if (settings.maxDryerSlotsPerDay !== undefined) payload.maxDryerSlotsPerDay = settings.maxDryerSlotsPerDay;
     if (settings.blockPastSlots !== undefined) payload.blockPastSlots = settings.blockPastSlots;
     if (settings.maxAdvanceDays !== undefined) payload.maxAdvanceDays = settings.maxAdvanceDays;
+    if (settings.isConfigured !== undefined) payload.isConfigured = Boolean(settings.isConfigured);
 
     await setDoc(doc(db, 'settings', 'booking'), payload, { merge: true });
   },

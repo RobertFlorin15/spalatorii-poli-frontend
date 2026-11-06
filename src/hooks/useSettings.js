@@ -12,7 +12,7 @@ import { logError } from '../utils/logger';
  * (de exemplu din cauza unor date corupte).
  */
 export function useSettings() {
-  const [state, setState] = useState({ ...DEFAULT_SETTINGS, loading: true });
+  const [state, setState] = useState({ ...DEFAULT_SETTINGS, isConfigured: false, loading: true });
 
   useEffect(() => {
     // CE SE CERE DE LA BACKEND:
@@ -41,7 +41,7 @@ export function useSettings() {
             : DEFAULT_SETTINGS.maxAdvanceDays,
         };
         const safe = validateSettings(candidate) ? DEFAULT_SETTINGS : candidate;
-        setState({ ...safe, loading: false });
+        setState({ ...safe, isConfigured: raw?.isConfigured === true, loading: false });
       },
       (error) => {
         logError('settings:read', error);

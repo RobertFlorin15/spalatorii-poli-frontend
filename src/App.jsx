@@ -3,6 +3,7 @@ import { FiSliders } from 'react-icons/fi';
 import './theme.css';
 import './App.scss';
 import { useTheme } from './hooks/useTheme';
+import { useSettings } from './hooks/useSettings';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ThemeToggle from './components/ThemeToggle/ThemeToggle';
 import RegulationsMenu from './components/RegulationsMenu/RegulationsMenu';
@@ -11,6 +12,7 @@ import MachineList from './pages/MachineList/MachineList';
 import MachineSchedule from './pages/MachineSchedule/MachineSchedule';
 import MyBookings from './pages/MyBookings/MyBookings';
 import AdminPanel from './pages/AdminPanel/AdminPanel';
+import InitialSetup from './pages/InitialSetup/InitialSetup';
 import LoginPage from './pages/LoginPage/LoginPage';
 
 // Poziția fiecărui cerc (în ordine: blob 1, 2, 3) pentru fiecare "scenă".
@@ -45,6 +47,10 @@ function AppShell({ theme, toggleTheme }) {
   // isAdmin vine din sesiunea confirmată de server. Aici doar ascunde/arată interfața;
   // serverul verifică din nou rolul la fiecare cerere către endpoint-urile de admin.
   const { isAdmin } = useAuth();
+  const { isConfigured, loading: settingsLoading } = useSettings();
+  const [setupJustFinished, setSetupJustFinished] = useState(false);
+
+  const needsInitialSetup = isAdmin && !settingsLoading && !isConfigured && !setupJustFinished;
 
   // Dacă pierzi rolul de admin cât ești pe pagina de admin, te întoarcem la mașini
   const activeView = view === 'admin' && !isAdmin ? 'machines' : view;
@@ -125,21 +131,25 @@ function AppShell({ theme, toggleTheme }) {
         </header>
 
         {/* Navigare între pagini */}
-        <nav className="app-shell__nav" aria-label="Navigare principală">
-          <SegmentedTabs
-            label="Pagini"
-            value={activeView}
-            onChange={handleNavChange}
-            options={[
-              { value: 'machines', label: 'Mașini' },
-              { value: 'bookings', label: 'Rezervările mele' },
-            ]}
-          />
-        </nav>
+        {!needsInitialSetup && (
+          <nav className="app-shell__nav" aria-label="Navigare principală">
+            <SegmentedTabs
+              label="Pagini"
+              value={activeView}
+              onChange={handleNavChange}
+              options={[
+                { value: 'machines', label: 'Mașini' },
+                { value: 'bookings', label: 'Rezervările mele' },
+              ]}
+            />
+          </nav>
+        )}
 
         <main className="app-shell__main">
-          <div key={`${activeView}-${selectedMachine?.id ?? 'list'}`} className="view-enter app-shell__view">
-            {activeView === 'admin' ? (
+          <div key={`${needsInitialSetup ? 'setup' : activeView}-${selectedMachine?.id ?? 'list'}`} className="view-enter app-shell__view">
+            {needsInitialSetup ? (
+              <InitialSetup onComplete={() => setSetupJustFinished(true)} />
+            ) : activeView === 'admin' ? (
               <AdminPanel />
             ) : activeView === 'bookings' ? (
               <MyBookings onGoToMachines={goToMachines} />
