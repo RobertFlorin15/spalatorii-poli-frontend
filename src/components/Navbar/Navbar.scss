@@ -1,0 +1,86 @@
+.app-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+
+  &__inner {
+    width: 100%;
+    max-width: 28rem;
+    margin: 0 auto;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+
+    @media (min-width: 1024px) {
+      max-width: 64rem;
+      padding: 0.75rem 2rem;
+    }
+  }
+
+  &__brand {
+    font-size: 1.5rem;
+    line-height: 2rem;
+    font-weight: 800;
+    color: var(--on-bg);
+    text-decoration: none;
+    letter-spacing: 0.025em;
+    filter: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.07)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.06));
+    transition: opacity 0.15s ease;
+
+    &:hover {
+      opacity: 0.9;
+    }
+
+    @media (min-width: 768px) {
+      font-size: 1.75rem;
+      line-height: 2.25rem;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  &__admin-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 0;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--toggle-bg);
+    color: var(--toggle-icon);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+
+    &:hover {
+      background-color: var(--toggle-hover);
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+
+    &--active {
+      background-color: var(--tab-active-bg);
+      color: var(--tab-active-text);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+
+      &:hover {
+        background-color: var(--tab-active-bg);
+      }
+    }
+  }
+}

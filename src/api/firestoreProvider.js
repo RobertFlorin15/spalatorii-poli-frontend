@@ -564,7 +564,6 @@ export const settingsApi = {
           maxDryerSlotsPerDay: data.maxDryerSlotsPerDay,
           blockPastSlots: data.blockPastSlots,
           maxAdvanceDays: data.maxAdvanceDays,
-          isConfigured: data.isConfigured === true,
         });
       },
       onError
@@ -609,7 +608,6 @@ export const settingsApi = {
     if (settings.maxDryerSlotsPerDay !== undefined) payload.maxDryerSlotsPerDay = settings.maxDryerSlotsPerDay;
     if (settings.blockPastSlots !== undefined) payload.blockPastSlots = settings.blockPastSlots;
     if (settings.maxAdvanceDays !== undefined) payload.maxAdvanceDays = settings.maxAdvanceDays;
-    if (settings.isConfigured !== undefined) payload.isConfigured = Boolean(settings.isConfigured);
 
     await setDoc(doc(db, 'settings', 'booking'), payload, { merge: true });
   },

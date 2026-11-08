@@ -1,18 +1,21 @@
-import { useState } from 'react';
-import { FiSliders } from 'react-icons/fi';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
 import './theme.css';
 import './App.scss';
 import { useTheme } from './hooks/useTheme';
-import { useSettings } from './hooks/useSettings';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import ThemeToggle from './components/ThemeToggle/ThemeToggle';
-import RegulationsMenu from './components/RegulationsMenu/RegulationsMenu';
+import Navbar from './components/Navbar/Navbar';
 import SegmentedTabs from './components/SegmentedTabs/SegmentedTabs';
 import MachineList from './pages/MachineList/MachineList';
 import MachineSchedule from './pages/MachineSchedule/MachineSchedule';
 import MyBookings from './pages/MyBookings/MyBookings';
 import AdminPanel from './pages/AdminPanel/AdminPanel';
-import InitialSetup from './pages/InitialSetup/InitialSetup';
 import LoginPage from './pages/LoginPage/LoginPage';
 
 // Poziția fiecărui cerc (în ordine: blob 1, 2, 3) pentru fiecare "scenă".
@@ -40,44 +43,33 @@ const SCENES = {
   ],
 };
 
+function getSceneFromPath(pathname) {
+  if (pathname.startsWith('/admin')) return 'admin';
+  if (pathname.startsWith('/rezervari')) return 'bookings';
+  if (pathname.startsWith('/masini/')) return 'schedule';
+  return 'machines';
+}
+
 function AppShell({ theme, toggleTheme }) {
-  const [view, setView] = useState('machines'); // 'machines' | 'bookings' | 'admin'
-  const [selectedMachine, setSelectedMachine] = useState(null);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   // isAdmin vine din sesiunea confirmată de server. Aici doar ascunde/arată interfața;
   // serverul verifică din nou rolul la fiecare cerere către endpoint-urile de admin.
   const { isAdmin } = useAuth();
-  const { isConfigured, loading: settingsLoading } = useSettings();
-  const [setupJustFinished, setSetupJustFinished] = useState(false);
 
-  const needsInitialSetup = isAdmin && !settingsLoading && !isConfigured && !setupJustFinished;
-
-  // Dacă pierzi rolul de admin cât ești pe pagina de admin, te întoarcem la mașini
-  const activeView = view === 'admin' && !isAdmin ? 'machines' : view;
-
-  const scene = activeView === 'admin'
+  const activeView = location.pathname.startsWith('/admin')
     ? 'admin'
-    : activeView === 'bookings'
+    : location.pathname.startsWith('/rezervari')
       ? 'bookings'
-      : selectedMachine ? 'schedule' : 'machines';
+      : 'machines';
+
+  const scene = getSceneFromPath(location.pathname);
   const [t1, t2, t3] = SCENES[scene];
 
-  const goToMachines = () => {
-    setSelectedMachine(null);
-    setView('machines');
-  };
-
-  const goToAdmin = () => {
-    setSelectedMachine(null);
-    setView('admin');
-  };
-
   const handleNavChange = (next) => {
-    if (next === 'machines') goToMachines();
-    else {
-      setSelectedMachine(null);
-      setView('bookings');
-    }
+    if (next === 'bookings') navigate('/rezervari');
+    else navigate('/');
   };
 
   return (
@@ -100,67 +92,39 @@ function AppShell({ theme, toggleTheme }) {
         style={{ transform: t3 }}
       ></div>
 
+      <Navbar
+        theme={theme}
+        toggleTheme={toggleTheme}
+        isAdmin={isAdmin}
+      />
+
       <div className="app-shell__container">
-        <header className="app-shell__header">
-          <h1 className="app-shell__brand" onClick={goToMachines}>
-            Spălătorie
-          </h1>
-
-          {/* Butonul de admin: apare doar pentru administratori */}
-          {isAdmin && (
-            <div className="app-shell__header-left">
-              <button
-                type="button"
-                onClick={goToAdmin}
-                aria-label="Panou administrator"
-                title="Panou administrator"
-                aria-pressed={activeView === 'admin'}
-                className={`app-shell__admin-btn ${
-                  activeView === 'admin' ? 'app-shell__admin-btn--active' : ''
-                }`}
-              >
-                <FiSliders size={22} aria-hidden="true" />
-              </button>
-            </div>
-          )}
-
-          <div className="app-shell__header-right">
-            <RegulationsMenu />
-            <ThemeToggle theme={theme} onToggle={toggleTheme} />
-          </div>
-        </header>
-
         {/* Navigare între pagini */}
-        {!needsInitialSetup && (
-          <nav className="app-shell__nav" aria-label="Navigare principală">
-            <SegmentedTabs
-              label="Pagini"
-              value={activeView}
-              onChange={handleNavChange}
-              options={[
-                { value: 'machines', label: 'Mașini' },
-                { value: 'bookings', label: 'Rezervările mele' },
-              ]}
-            />
-          </nav>
-        )}
+        <nav className="app-shell__nav" aria-label="Navigare principală">
+          <SegmentedTabs
+            label="Pagini"
+            value={activeView}
+            onChange={handleNavChange}
+            options={[
+              { value: 'machines', label: 'Mașini' },
+              { value: 'bookings', label: 'Rezervările mele' },
+            ]}
+          />
+        </nav>
 
         <main className="app-shell__main">
-          <div key={`${needsInitialSetup ? 'setup' : activeView}-${selectedMachine?.id ?? 'list'}`} className="view-enter app-shell__view">
-            {needsInitialSetup ? (
-              <InitialSetup onComplete={() => setSetupJustFinished(true)} />
-            ) : activeView === 'admin' ? (
-              <AdminPanel />
-            ) : activeView === 'bookings' ? (
-              <MyBookings onGoToMachines={goToMachines} />
-            ) : selectedMachine ? (
-              <MachineSchedule
-                machine={selectedMachine}
-                onBack={() => setSelectedMachine(null)}
+          <div key={location.pathname} className="view-enter app-shell__view">
+            <Routes>
+              <Route path="/" element={<MachineList />} />
+              <Route path="/masini" element={<Navigate to="/" replace />} />
+              <Route path="/masini/:machineId" element={<MachineSchedule />} />
+              <Route path="/rezervari" element={<MyBookings />} />
+              <Route
+                path="/admin"
+                element={isAdmin ? <AdminPanel /> : <Navigate to="/" replace />}
               />
-            ) : (
-              <MachineList onSelectMachine={(machine) => setSelectedMachine(machine)} />
-            )}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
           </div>
         </main>
       </div>
@@ -184,18 +148,32 @@ function Gate({ theme, toggleTheme }) {
     );
   }
 
-  if (!user) return <LoginPage />;
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    );
+  }
 
-  return <AppShell theme={theme} toggleTheme={toggleTheme} />;
+  return (
+    <Routes>
+      <Route path="/login" element={<Navigate to="/" replace />} />
+      <Route path="/*" element={<AppShell theme={theme} toggleTheme={toggleTheme} />} />
+    </Routes>
+  );
 }
 
 function App() {
   const [theme, toggleTheme] = useTheme();
 
   return (
-    <AuthProvider>
-      <Gate theme={theme} toggleTheme={toggleTheme} />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <Gate theme={theme} toggleTheme={toggleTheme} />
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 

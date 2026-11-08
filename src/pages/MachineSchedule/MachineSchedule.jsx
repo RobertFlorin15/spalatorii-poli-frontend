@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useParams, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { FiArrowLeft, FiChevronLeft, FiChevronRight, FiX } from 'react-icons/fi';
 import { format, addDays, subDays, isSameDay, differenceInCalendarDays } from 'date-fns';
 import ro from 'date-fns/locale/ro';
@@ -30,10 +31,15 @@ const formatDuration = (minutes) => {
 
 const Portal = ({ children }) => createPortal(children, document.body);
 
-const MachineCalendar = ({ machine, onBack }) => {
+const MachineCalendar = ({ machine: propMachine, onBack }) => {
+  const { machineId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [events, setEvents] = useState([]);
   const [myBookings, setMyBookings] = useState([]);
   const [machinesMap, setMachinesMap] = useState({});
+  const [machinesLoaded, setMachinesLoaded] = useState(false);
   const [maintenances, setMaintenances] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [now, setNow] = useState(new Date());
@@ -43,6 +49,12 @@ const MachineCalendar = ({ machine, onBack }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [bookError, setBookError] = useState(null);
   const bodyRef = useRef(null);
+
+  const machine = propMachine || (machineId ? machinesMap[machineId] : null) || location.state?.machine || null;
+  const handleBack = () => {
+    if (onBack) onBack();
+    else navigate('/');
+  };
 
   // Setările setate de administrator (se actualizează în timp real)
   const {
@@ -54,8 +66,8 @@ const MachineCalendar = ({ machine, onBack }) => {
     maxAdvanceDays,
   } = useSettings();
 
-  const dailyTypeLimit = machine.type === 'dryer' ? maxDryerSlotsPerDay : maxWasherSlotsPerDay;
-  const typeLabel = machine.type === 'dryer' ? 'uscătoare' : 'mașini de spălat';
+  const dailyTypeLimit = machine?.type === 'dryer' ? maxDryerSlotsPerDay : maxWasherSlotsPerDay;
+  const typeLabel = machine?.type === 'dryer' ? 'uscătoare' : 'mașini de spălat';
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60 * 1000);
@@ -73,8 +85,12 @@ const MachineCalendar = ({ machine, onBack }) => {
         const map = {};
         list.forEach((m) => { map[m.id] = m; });
         setMachinesMap(map);
+        setMachinesLoaded(true);
       },
-      (error) => logError('calendar:machines', error)
+      (error) => {
+        logError('calendar:machines', error);
+        setMachinesLoaded(true);
+      }
     );
     const unsubMine = bookingsApi.subscribeMyBookings(
       (list) => setMyBookings(list),
@@ -148,6 +164,7 @@ const MachineCalendar = ({ machine, onBack }) => {
 
   // Câte intervale de 30 min a rezervat deja utilizatorul în ziua selectată pe mașini de același tip
   const usedDailySlots = useMemo(() => {
+    if (!machine) return 0;
     let count = 0;
     myBookings.forEach((b) => {
       if (b.status === 'cancelled') return;
@@ -158,7 +175,7 @@ const MachineCalendar = ({ machine, onBack }) => {
       if (slotsCount > 0) count += slotsCount;
     });
     return count;
-  }, [myBookings, currentDate, machinesMap, machine.id, machine.type]);
+  }, [myBookings, currentDate, machinesMap, machine]);
 
   const remainingDailySlots = Math.max(0, dailyTypeLimit - usedDailySlots);
 
@@ -273,11 +290,18 @@ const MachineCalendar = ({ machine, onBack }) => {
   };
   const goToToday = () => changeDay(new Date());
 
+  if (!machine) {
+    if (!machinesLoaded) {
+      return <div className="machine-list__loading">se incarca.</div>;
+    }
+    return <Navigate to="/" replace />;
+  }
+
   return (
     <div className="mc-root">
       {/* Antet */}
       <div className="mc-top">
-        <button className="mc-back" onClick={onBack} aria-label="Înapoi">
+        <button className="mc-back" onClick={handleBack} aria-label="Înapoi">
           <FiArrowLeft size={18} aria-hidden="true" />
           <span className="mc-back-label">Înapoi</span>
         </button>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { machinesApi } from '../../api';
 import { logError } from '../../utils/logger';
 import MachineCard from '../../components/MachineCard/MachineCard';
@@ -99,8 +100,17 @@ const MachineSlider = ({ items, onSelectMachine }) => {
 };
 
 const MachineList = ({ onSelectMachine }) => {
+  const navigate = useNavigate();
   const [machines, setMachines] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const handleSelectMachine = (machine) => {
+    if (onSelectMachine) {
+      onSelectMachine(machine);
+    } else {
+      navigate(`/masini/${machine.id}`, { state: { machine } });
+    }
+  };
 
   useEffect(() => {
     // CE SE CERE DE LA BACKEND:
@@ -133,7 +143,7 @@ const MachineList = ({ onSelectMachine }) => {
       <section>
         <h2 className="machine-list__heading">Mașini de spălat</h2>
         {washers.length > 0 ? (
-          <MachineSlider items={washers} onSelectMachine={onSelectMachine} />
+          <MachineSlider items={washers} onSelectMachine={handleSelectMachine} />
         ) : (
           <p className="machine-list__empty">nu exista</p>
         )}
@@ -143,7 +153,7 @@ const MachineList = ({ onSelectMachine }) => {
       <section>
         <h2 className="machine-list__heading">Uscătoare</h2>
         {dryers.length > 0 ? (
-          <MachineSlider items={dryers} onSelectMachine={onSelectMachine} />
+          <MachineSlider items={dryers} onSelectMachine={handleSelectMachine} />
         ) : (
           <p className="machine-list__empty">nu exista</p>
         )}

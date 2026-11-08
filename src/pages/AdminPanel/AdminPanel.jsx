@@ -429,7 +429,7 @@ const AdminPanel = () => {
       if (countsDirty) {
         await machinesApi.syncCounts(activeWasherCount, activeDryerCount, machines);
       }
-      await settingsApi.update({ ...activeDraft, isConfigured: true });
+      await settingsApi.update(activeDraft);
       setWasherCountDraft(null);
       setDryerCountDraft(null);
       setStatus({ type: 'ok', text: 'Setările au fost salvate.' });

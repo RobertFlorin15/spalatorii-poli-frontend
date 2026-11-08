@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { machinesApi, bookingsApi } from '../../api';
 import { userMessage } from '../../api/errors';
 import { logError } from '../../utils/logger';
@@ -116,7 +117,13 @@ const StatTile = ({ label, value }) => (
 /* --------------------------------------------------------- */
 
 const MyBookings = ({ onGoToMachines }) => {
+  const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
+
+  const handleGoToMachines = () => {
+    if (onGoToMachines) onGoToMachines();
+    else navigate('/');
+  };
   const [machines, setMachines] = useState({});
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('upcoming');
@@ -320,7 +327,7 @@ const MyBookings = ({ onGoToMachines }) => {
       <p className="my-bookings__empty-text">{text}</p>
       <button
         type="button"
-        onClick={onGoToMachines}
+        onClick={handleGoToMachines}
         className="my-bookings__empty-btn"
       >
         Rezervă o mașină
